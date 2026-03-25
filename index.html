@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
-    <title>鉄壁修行 V6.0 完全管理版</title>
+    <title>鉄壁修行 V7.0 完全管理版</title>
     <style>
         :root {
             --bg: #070b14;
@@ -45,7 +45,8 @@
         button.main-btn { width: 100%; height: 54px; border: none; border-radius: 16px; font-size: 18px; font-weight: 900; cursor: pointer; background: var(--primary); color: white; transition: 0.2s; box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3); }
         button.main-btn:active { transform: scale(0.98); }
 
-        .copy-btn { background: var(--gray); color: white; border: none; padding: 4px 10px; border-radius: 6px; font-size: 9px; cursor: pointer; font-weight: bold; }
+        .copy-btn { background: var(--gray); color: white; border: none; padding: 3px 10px; border-radius: 6px; font-size: 9px; cursor: pointer; font-weight: bold; }
+        .io-btn { background: var(--accent); color: white; border: none; padding: 5px 12px; border-radius: 8px; font-size: 10px; font-weight: bold; cursor: pointer; margin-left: 5px; }
         
         #card { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; text-align: center; gap: 10px; }
         #englishWord { font-size: 44px; font-weight: 900; letter-spacing: -1px; line-height: 1.1; word-break: break-all; color: var(--text); }
@@ -67,10 +68,16 @@
 
 <div id="setup" class="active">
     <div class="container">
-        <h1>鉄壁修行 V6.0 極限管理</h1>
+        <h1>鉄壁修行 V7.0 完全管理</h1>
         <div class="input-group" style="margin-bottom:15px; background: #1e1b4b; border-color: var(--accent);">
-            <span>進捗復元 (例: 1c,2a,3b)</span>
-            <textarea id="importArea" placeholder="ここに前回の「保存用データ」を貼り付け"></textarea>
+            <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom:5px;">
+                <span style="font-size:10px; color:#fff;">進捗管理（1c,2a...形式）</span>
+                <div>
+                    <button class="io-btn" onclick="exportToClipboard()">進捗を出す</button>
+                    <button class="io-btn" style="background:#4b5563;" onclick="document.getElementById('importArea').value=''">消去</button>
+                </div>
+            </div>
+            <textarea id="importArea" placeholder="ここに前回の保存データを貼り付け"></textarea>
         </div>
 
         <div class="label">修行範囲</div>
@@ -93,14 +100,14 @@
             </div>
         </div>
 
-        <div class="label">テンポ調整</div>
+        <div class="label">テンポ調整（秒）</div>
         <div class="param-grid">
             <div class="input-group">
-                <span>想起待ち(秒)</span>
+                <span>想起待ち</span>
                 <input type="number" id="engTime" value="1.0" step="0.1">
             </div>
             <div class="input-group">
-                <span>解答期限(秒)</span>
+                <span>解答期限</span>
                 <input type="number" id="japTime" value="1.0" step="0.1">
             </div>
         </div>
@@ -125,7 +132,7 @@
     </div>
     <div style="display:flex; justify-content: space-between; align-items:center; padding: 5px;">
         <button onclick="finishTraining()" style="background:none; border:none; color:var(--gray); font-size:11px; cursor:pointer;">中断終了</button>
-        <button onclick="quickCopy()" id="midCopyBtn" style="background:var(--gray); border:none; color:white; font-size:10px; padding:6px 12px; border-radius:8px; cursor:pointer;">進捗をコピー</button>
+        <button onclick="quickCopy()" id="midCopyBtn" style="background:var(--gray); border:none; color:white; font-size:10px; padding:6px 12px; border-radius:8px; cursor:pointer;">今のデータをコピー</button>
     </div>
 </div>
 
@@ -135,7 +142,7 @@
         <div id="resultScore" style="font-size:22px; font-weight:900; color:var(--success); margin-bottom:15px;"></div>
         
         <div class="label">
-            <span>保存用データ (次回これを貼り付け)</span>
+            <span>保存用データ</span>
             <button class="copy-btn" onclick="copyText('numericalArea', this)">コピー</button>
         </div>
         <textarea id="numericalArea" readonly></textarea>
@@ -146,11 +153,21 @@
 
 <script>
 const WORDS = [];
-const mastery = {}; // { id: 'a' | 'b' | 'c' }
+const mastery = {}; 
 let queue = [];
 let results = [];
 let activeWord = null;
 let timers = { eng: null, jap: null };
+
+// 音声の準備
+let enVoice = null;
+function updateVoices() {
+    const voices = window.speechSynthesis.getVoices();
+    enVoice = voices.find(v => v.lang === 'en-US' && v.name.includes('Google')) || 
+              voices.find(v => v.lang === 'en-US') || 
+              voices.find(v => v.lang.startsWith('en'));
+}
+window.speechSynthesis.onvoiceschanged = updateVoices;
 
 function loadData() {
     const raw = document.getElementById('words-raw-data').textContent.trim();
@@ -174,8 +191,8 @@ function adj(id, delta) {
 
 function startTraining() {
     if(WORDS.length === 0) loadData();
+    updateVoices();
     
-    // インポート
     const imp = document.getElementById('importArea').value.trim();
     if(imp) {
         imp.split(',').forEach(token => {
@@ -188,7 +205,6 @@ function startTraining() {
     const end = parseInt(document.getElementById('rangeEnd').value);
     let available = WORDS.filter(w => w.id >= start && w.id <= end);
     
-    // 出題優先順位: c(1) > 未設定(1.5) > b(2) > a(3)
     const getPriority = (id) => {
         const s = mastery[id];
         if(s === 'c') return 1;
@@ -254,7 +270,8 @@ function speak(txt, lang) {
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(txt);
     u.lang = lang;
-    u.rate = 1.5;
+    u.rate = 1.4;
+    if(lang === 'en-US' && enVoice) u.voice = enVoice;
     window.speechSynthesis.speak(u);
 }
 
@@ -271,6 +288,12 @@ function generateExport() {
         .sort((a, b) => a - b)
         .map(id => `${id}${mastery[id]}`)
         .join(',');
+}
+
+function exportToClipboard() {
+    const str = generateExport();
+    if(!str) return alert("まだデータがありません");
+    navigator.clipboard.writeText(str).then(() => alert("現在の進捗をコピーしました"));
 }
 
 function quickCopy() {
@@ -304,8 +327,9 @@ function copyText(id, btn) {
 
 document.onkeydown = (e) => {
     if(!document.getElementById("app").classList.contains('active')) return;
-    if(e.key.toLowerCase() === 'z') processAnswer(true);
-    if(e.key.toLowerCase() === 'a') processAnswer(false);
+    const k = e.key.toLowerCase();
+    if(k === 'z') processAnswer(true);
+    if(k === 'a') processAnswer(false);
 };
 </script>
 
@@ -1235,7 +1259,7 @@ resign,辞職する922
 retire,退職する923
 quit,やめる924
 farewell,別れ925
-pension, p年金926
+pension,年金926
 funeral,葬式927
 tomb,墓928
 bury,埋葬する929
@@ -1685,807 +1709,807 @@ charm,魅力1372
 respond,反応する1373
 react,反応する1374
 interact,相互作用する1375
-adjust,適応する1376
-adapt,適応する1377
-shift,変化する1378
-fit,合う1379
-suit,似合う1380
-match,合う1381
-go with,合う1382
-diet,食事1383
-obese,肥満した1384
-weight,体重1385
-nutrition,栄養1386
-nourish,養う1387
-nurture,育てる1388
-foster,育てる1389
-feast,ご馳走1390
-appetite,食欲1391
-starve,飢える1392
-hunger,空腹1393
-thirst,喉の渇き1394
-greed,貪欲1395
-famine,飢饉1396
-ingredient,材料1397
-digest,消化する1398
-beverage,飲料1399
-habitat,生息地1400
-dwell,住む1401
-residence,住居1402
-accommodate,収容する1403
+adjust,適応する 1376
+adapt,適応する 1377
+shift,変化する 1378
+fit,合う 1379
+suit,似合う 1380
+match,合う 1381
+go with,合う 1382
+diet,食事 1383
+obese,肥満した 1384
+weight,体重 1385
+nutrition,栄養 1386
+nourish,養う 1387
+nurture,育てる 1388
+foster,育てる 1389
+feast,ご馳走 1390
+appetite,食欲 1391
+starve,飢える 1392
+hunger,空腹 1393
+thirst,喉の渇き 1394
+greed,貪欲 1395
+famine,飢饉 1396
+ingredient,材料 1397
+digest,消化する 1398
+beverage,飲料 1399
+habitat,生息地 1400
+dwell,住む 1401
+residence,住居 1402
+accommodate,収容する 1403
 refuge,避難 1404
-shelter,避難所1405
-clothes,衣服1406
-fabric,布1407
-thread,糸1408
-weave,織る1409
-wear,着る1410
-disguise,変装する1411
-naked,裸の1412
-fashion,流行1413
-household,家庭1414
-domestic,家庭の1415
-routine,日常1416
-chore,雑用1417
-commute,通勤する1418
-grocery,食料品1419
-greet,挨拶する1420
-souvenir,土産1421
-degree,程度1422
-extent,程度1423
-scale,規模1424
-moderate,適度な1425
-temperate,節度ある1426
-proper,適切な1427
-appropriate,適切な1428
-extreme,極端な1429
-tremendous,莫大な1430
-excess,過剰1431
-extra,余分な1432
-gradual,徐々の1433
-steady,安定した1434
-sharply,急激に1435
-steep,急な1436
-marked,著しい1437
-partly,部分的に1438
-entire,全体の1439
-fully,完全に1440
-thorough,徹底的な1441
-ultimate,最終の1442
-terminal,終末の1443
-eventually,最終的に1444
-end up,結局～1445
-in the long run,長期的に1446
-for good,永遠に1447
-rate,割合1448
-proportion,比率1449
-ratio,比率1450
-fraction,一部1451
-portion,一部1452
-fragment,断片1453
-segment,部分1454
-cluster,群れ1455
-partial,部分的な1456
-all in all,概して1457
-on the whole,概して1458
-by and large,概して1459
-at large,全体の1460
-at length,詳細に1461
-lack,不足1462
-devoid,欠けている1463
-run out of,使い果たす1464
-short of,不足して1465
-deficit,不足1466
-scarce,乏しい1467
-vacant,空いている1468
-for want of,不足で1469
-dense,密な1470
-convey,伝える1471
-impart,与える1472
-donate,寄付する1473
-endow,授ける1474
-distract,そらす1475
-evade,避ける1476
-divert,そらす1477
-convert,変換する1478
-expel,追い出す1479
-repel,追い払う1480
-disperse,散らす1481
-circulate,循環する1482
-encounter,遭遇する1483
-bump into,偶然会う1484
-come across,偶然見つける1485
-trace,追跡する1486
-overwhelm,圧倒する1487
-overtake,追い越す1488
-undergo,経験する1489
-descend,下る1490
-ascend,上る1491
-plunge,飛び込む1492
-embrace,受け入れる1493
-embody,具現化する1494
-render,～にする1495
-modify,修正する1496
-restore,回復する1497
-relieve,和らげる1498
-retreat,退却する1499
-retrieve,～を回収する、取り戻す1500
-resume,～を再開する1501
-dissolve,溶解する1502
-erase,～を消す、消去する1503
-delete,～を消す、消去する1504
-wipe out,～を消し去る、絶滅させる1505
-suspend,～を宙吊りにする1506
-choke,～を窒息させる、詰まらせる1507
-suffocate,～を窒息させる1508
-squeeze,～を絞る、絞り出す1509
-spill,～をこぼす1510
-make up,(～を)埋め合せる、取り戻す(for)1511
-compensate,(～を)埋め合わせをする、補償する(for)1512
-make out,～を理解する、判読する1513
-make for,～へ向かう； ～(の実現)に役立つ、～を可能にする1514
-turn out,～であることが分かる、判読する1515
-turn up,現れる、登場する1516
-turn down,～(誘い・要求)を断る1517
-turn to,～に頼る1518
-take in,～を取り入れる； 理解する； を騙す1519
-take on,～(意味・重要性)を帯びる； (仕事)を引き受ける1520
-take after,～に似る1521
-take up,～を占める； を取り上げる1522
-take over,～(仕事)を引き継ぐ1523
-take to,～が好きになる、習慣になる1524
-put out,～を消す1525
-put,言うと1526
-do,間に合う、良い1527
-make do with,～で間に合わせる1528
-give away,～を(ただで)譲る、(秘密・気持ち)を明かす1529
-give way,(～)に屈する、取って代わられる(to)1530
-give in,(～)に屈する(to)1531
-give off,～(光・熱・期待)を発する1532
-come up with,～を思いつく1533
-come about,生じる、起こる1534
-come into being,生じる1535
-come to,意識を戻す1536
-come in handy,便利である、役に立つ1537
-Come on.,おいおい、冗談だろ1538
-go on to do,さらに続けて～する1539
-go off,爆発する1540
-Go ahead.,どうぞ1541
-bring about,～を引き起こす、もたらす1542
-bring oneself to do,～する気になる1543
-bring A home to B,AをBに分からせる、実感させる1544
-get at,～を言おうとする1545
-get by,なんとかやりくりする1546
-get across,～を伝える、分かってもらう1547
-get away with,（罰を受けずに・ばれずに）逃げおおせる1548
-let go of,～を手放す1549
-let in,～を中に入れる1550
-let alone,ましてや～ない1551
-pull up,車をを止める1552
-make it,(約束・予定通り)やり遂げる、都合がつく、間に合う1553
-That's it,もう終わりだ； まさにそれだ、その通りだ1554
-That is that,それでおしまいだ、それだけのこと1555
-make of A,Aを～と評価する、判断する1556
-make the most of,～を最大限利用する1557
-make the best of,～をできる限り利用する1558
-make sure,確実に～する； ～を確かめる1559
-make ends meet,やりくりする、帳尻を合わせる1560
-make believe,～のふりをする、真似をする1561
-make a scene,ひと騒ぎする、醜態を晒す1562
-think much of,～を高く評価する1563
-think better of,～を考え直す、見直す1564
-think twice,よく考える1565
-on second thought,考え直して、やっぱり1566
-show off,～を見せびらかせる、誇示する1567
-show up,現れる、登場する1568
-see to,～に対調する、の世話をする、を手配する1569
-see through,～（嘘など）を見抜く； ～を最後までやり通す； (人)を最後まで助ける1570
-in A's way,Aの邪魔になって1571
-make one's way,前進する1572
-find one's way,たどり着く、入ってくる1573
-go out of one's way to do,わざわざ～する1574
-by way of,～を経由して、～によって1575
-have a way of doing,～する癖がある、傾向がある1576
-under way,進行中で1577
-true for,～に当てはまる1578
-hold true,当てはまる、通用する1579
-true to life,実物そっくり1580
-give rise to,～を生じる、引き起こす1581
-give birth to,～を産む； 生じる、引き起こす1582
-put an end to,～を終わらせる1583
-take turns,交替する、順番にやる1584
-in turn,それが今度は1585
-in return,(～の)お返しに(for)1586
-out of the question,論外である、話にならない1587
-in question,問題になっている、当の1588
-on end,続けて1589
-in a row,続けて1590
-so far,これ(それ)までのところは1591
-go so far as to do,～までする1592
-up to,(最大で)～まで； ～次第で； ～(良くないこと)に従事して、～を企んで1593
-leave behind,～を置き忘れる、残していく1594
-leave out,～を省く、除外する、のけ者にする1595
-rule out,～を除外する1596
-back and forth,行ったり来たり1597
-upside down,上下逆さまに1598
-inside out,裏返しに1599
-vice versa,その逆、逆もまた同様1600
-other way around,あべこべ、逆1601
-this and that,あれこれ、様々なこと1602
-for the good of,～のために、利益となるように1603
-as good as,～も同然1604
-get the better of,～に勝る、打ち勝つ1605
-know better,～するほど馬鹿ではない、もっと分別がある1606
-to the best of my knowledge,私の知る限りでは1607
-to say the least,控えめに言っても1608
-take for granted,当然とみなす1609
-take one's word for it,～の言うことを信じる1610
-take it easy,気楽にやる1611
-keep up with,～に遅れずについていく1612
-catch up with,～に追いつく1613
-fall behind,遅れる1614
-keep in touch with,～と連絡を取り合う1615
-look into,調べる、検討する1616
-look over,～にざっと目を通す1617
-look on,～を（…と）みなす(as)1618
-pass on,～を（…に）手渡す、伝える(to)1619
-pass for,～として（世間に）通る、通用する1620
-pass out,気絶する1621
-pass away,亡くなる1622
-reach for,～に手を伸ばす1623
-set out,(～へ)出発する(for)1624
-set free,～を解放する1625
-work out,～を解く、考え出す； うまくいく； トレーニングをする1626
-work on,～(仕事)に取り組む1627
-pick up,～を拾う、取り上げる； ～を車に乗せる、車で迎える； ～を買う； ～(言語・知識など)を身に付ける1628
-part with,～を手放す、と別れる1629
-live on,～に頼って生きる； を主食とする1630
-fall back on,～に頼る、を最後の拠り所とする1631
-rest on,～に頼る； に基づく1632
-cut down on,～を減らす、削減する1633
-point,要点、言いたいこと1634
-to the point,的を射ている1635
-make a point of doing,必ず～することにしている； ～を重視する1636
-keep an eye on,～を見張る1637
-have an eye for,～を見る目がある、鑑賞眼がある1638
-turn a deaf ear to,～を聞こうとしない1639
-make a face,顔をしかめる1640
-remain to do,まだ～していない1641
-have yet to do,まだ～していない1642
-on behalf of,～に代わって、を代表して1643
-second to none,誰にも負けない1644
-once and for all,これを最後に、きっぱりと1645
-for once,今回だけは、１回でいいから1646
-at stake,危険にさらされて； 問題となって1647
-in the wake of,～の後に続いて1648
-Beats me.,分からない1649
-Serves you right.,ざまあみろ、当然の報いだ1650
-Give me a break.,よしてくれ1651
-call it a day,今日はもう終わり1652
-mental,頭の、知力の； 精神の、心の1653
-spirit,精神(力)； 気分； 霊魂1654
-soul,魂、精神； 人1655
-material,素材、原料； 題材； 教材； 物質的な1656
-sane,正気の1657
-abuse,乱用、虐待； ～を乱用する、虐待する1658
-addict,～を中毒にさせる； 麻薬中毒者1659
-injure,～に怪我をさせる1660
-wound,～を負傷させる1661
-bleed,出血する1662
-scratch,引っかき傷、かすり傷、～を引っかく1663
-bruise,あざ、打撲傷 ～に打撲を負わせる1664
-suffer,（～で）苦しむ、悩む（from）1665
-torture,拷問； ～を拷問する、ひどく苦しめる1666
-torment,苦痛； ～を苦しめる1667
-vigor,活力1668
-feeble,弱々しい1669
-pale,(顔が)青白い、血色が悪い； (色が)淡い1670
-fatigue,(極度の)疲労1671
-weary,(～)に疲れている、飽き飽きしている(of)1672
-tedious,退屈な1673
-dreary,退屈な； ものわびしい1674
-thumb,親指1675
-palm,手のひら1676
-wrist,手首1677
-fist,握りこぶし1678
-elbow,ひじ1679
-muscle,筋肉1680
-thigh,大股1681
-knee,膝1682
-heel,かかと1683
-ankle,足首1684
-toe,足の指、つま先1685
-to one's feet,立って、立った状態で1686
-chest,胸； タンス1687
-limb,手足、四肢1688
-forehead,ひたい1689
-eyebrow,眉毛1690
-eyelid,まぶた1691
-eyelash,まつげ1692
-beard,あごひげ1693
-jaw,あご1694
-chin,あご(の先端)1695
-cheek,頬1696
-tremble,(恐怖・興奮で)震える； 震動する1697
-shiver,(寒さで)震える1698
-wander,(目的もなく)さまよう、歩き回る1699
-roam,歩き回る、徘徊する； ～を徘徊する1700
-stroll,(ぶらぶら)歩く1701
-stride,ひとまたぎ； 進歩； 大股で歩く1702
-stumble,つまずく； (～に)偶然でくわす(on)1703
-creep,這う、こっそり進む1704
-linger,(立ち去らずに)ぐずぐずする、残存する1705
-sniff,くんくん嗅ぐ； ～のにおいです嗅ぐ1706
-sneeze,くしゃみをする1707
-snore,いびきをかく1708
-sneer,(～を)あざ笑う、鼻で笑う(at)1709
-shrug,肩をすくめる1710
-clear one's throat,咳払いする1711
-frown,しかめ面をする； しかめ面1712
-grimace,しかめ面をする； しかめ面1713
-blink,まばたきをする； まばたき1714
-yawn,あくびをする1715
-mutter,つぶやく1716
-murmur,つぶやく1717
-mumble,つぶやく1718
-whisper,ささやく1719
-shriek,金切り声を上げる、叫ぶ1720
-sob,すすり泣く1721
-genuine,本物の、純粋の、心からの1722
-authentic,本物の、本場の1723
-fake,偽物の1724
-false,(わざと)間違った、偽の1725
-sincere,心からの、誠実な1726
-sheer,全くの1727
-elaborate,手の込んだ、精巧な1728
-intricate,複雑な、込み入った1729
-exquisite,精緻な、素晴らしい1730
-sophisticated,洗練された； 精巧な1731
-proficient,熟達した1732
-negative,否定の、否定的な、消極的な、マイナスの1733
-affirmative,肯定の、積極的な1734
-positive,積極的な、プラスの； 確信している1735
-vertical,垂直の、縦の1736
-horizontal,水平の1737
-parallel,(～と)平行の、類似した(to)； 類似(物)、匹敵するもの1738
-indifferent,(～に対して)無関心な(to)1739
-infamous,悪名高い、評判が悪い1740
-notorious,悪名高い、評判が悪い1741
-uneasy,落ち着かない、不安な1742
-awkward,落ち着かない、気まずい、不器用な、ぎこちない1743
-clumsy,不器用な、ぎこちない1744
-restless,落ち着きがない、せわしない1745
-relentless,執拗な、情け容赦のない1746
-ruthless,情け容赦のない、冷酷な1747
-reckless,向こう見ずな1748
-stupid,ばかな、愚かな1749
-silly,ばかな1750
-absurd,ばかげた、理に適わない1751
-ridiculous,ばかばかしい1752
-fragile,壊れやすい、もろい1753
-vulnerable,（～に対して）傷つきやすい、弱い(to)1754
-delicate,繊細な、微細な、優美な、臆病な1755
-stiff,堅い、凝っている； 堅苦しい1756
-rigid,堅い； 厳格な、融通が利かない1757
-flexible,曲がりやすい、柔軟性のある1758
-arrogant,傲慢な1759
-humble,謙虚な、つつましい； 質素な1760
-stubborn,頑固な1761
-obstinate,頑固な1762
-fierce,激しい1763
-harsh,厳しい1764
-stern,厳格な、険しい1765
-brave,勇敢な1766
-bold,大胆な1767
-timid,臆病な1768
-deliberate,意図的な、故意の； 慎重な1769
-discreet,慎重な1770
-prudent,慎重な1771
-subtle,微妙な、かすかな1772
-drastic,劇的な、徹底的な1773
-integral,必要不可欠な； 完全な1774
-decent,まともな、きちんとした、上品な1775
-neat,こぎれいな、すばらしい1776
-tidy,きちんとした、こぎれいな1777
-crude,生の、天然の、粗野な1778
-valid,有効な、正当な1779
-initiative,主導権、率先1780
-security,安全性1781
-merit,長所、利点1782
-access,交通の便、入手、利用1783
-technique,(専門的な)技術1784
-horror,恐怖1785
-terror,恐怖1786
-symbol,象徴1787
-barrier,障壁、障害1788
-gap,隔たり、差1789
-dilemma,ジレンマ、板挾み、難題1790
-stretch,～を伸ばす； 伸びる、広がる1791
-elite,エリート、精鋭； エリートの1792
+shelter,避難所 1405
+clothes,衣服 1406
+fabric,布 1407
+thread,糸 1408
+weave,織る 1409
+wear,着る 1410
+disguise,変装する 1411
+naked,裸の 1412
+fashion,流行 1413
+household,家庭 1414
+domestic,家庭の 1415
+routine,日常 1416
+chore,雑用 1417
+commute,通勤する 1418
+grocery,食料品 1419
+greet,挨拶する 1420
+souvenir,土産 1421
+degree,程度 1422
+extent,程度 1423
+scale,規模 1424
+moderate,適度な 1425
+temperate,節度ある 1426
+proper,適切な 1427
+appropriate,適切な 1428
+extreme,極端な 1429
+tremendous,莫大な 1430
+excess,過剰 1431
+extra,余分な 1432
+gradual,徐々の 1433
+steady,安定した 1434
+sharply,急激に 1435
+steep,急な 1436
+marked,著しい 1437
+partly,部分的に 1438
+entire,全体の 1439
+fully,完全に 1440
+thorough,徹底的な 1441
+ultimate,最終の 1442
+terminal,終末の 1443
+eventually,最終的に 1444
+end up,結局～ 1445
+in the long run,長期的に 1446
+for good,永遠に 1447
+rate,割合 1448
+proportion,比率 1449
+ratio,比率 1450
+fraction,一部 1451
+portion,一部 1452
+fragment,断片 1453
+segment,部分 1454
+cluster,群れ 1455
+partial,部分的な 1456
+all in all,概して 1457
+on the whole,概して 1458
+by and large,概して 1459
+at large,全体の 1460
+at length,詳細に 1461
+lack,不足 1462
+devoid,欠けている 1463
+run out of,使い果たす 1464
+short of,不足して 1465
+deficit,不足 1466
+scarce,乏しい 1467
+vacant,空いている 1468
+for want of,不足で 1469
+dense,密な 1470
+convey,伝える 1471
+impart,与える 1472
+donate,寄付する 1473
+endow,授ける 1474
+distract,そらす 1475
+evade,避ける 1476
+divert,そらす 1477
+convert,変換する 1478
+expel,追い出す 1479
+repel,追い払う 1480
+disperse,散らす 1481
+circulate,循環する 1482
+encounter,遭遇する 1483
+bump into,偶然会う 1484
+come across,偶然見つける 1485
+trace,追跡する 1486
+overwhelm,圧倒する 1487
+overtake,追い越す 1488
+undergo,経験する 1489
+descend,下る 1490
+ascend,上る 1491
+plunge,飛び込む 1492
+embrace,受け入れる 1493
+embody,具現化する 1494
+render,～にする 1495
+modify,修正する 1496
+restore,回復する 1497
+relieve,和らげる 1498
+retreat,退却する 1499
+retrieve,～を回収する、取り戻す 1500
+resume,～を再開する 1501
+dissolve,溶解する 1502
+erase,～を消す、消去する 1503
+delete,～を消す、消去する 1504
+wipe out,～を消し去る、絶滅させる 1505
+suspend,～を宙吊りにする 1506
+choke,～を窒息させる、詰まらせる 1507
+suffocate,～を窒息させる 1508
+squeeze,～を絞る、絞り出す 1509
+spill,～をこぼす 1510
+make up,(～を)埋め合せる、取り戻す(for) 1511
+compensate,(～を)埋め合わせをする、補償する(for) 1512
+make out,～を理解する、判読する 1513
+make for,～へ向かう； ～(の実現)に役立つ、～を可能にする 1514
+turn out,～であることが分かる、判読する 1515
+turn up,現れる、登場する 1516
+turn down,～(誘い・要求)を断る 1517
+turn to,～に頼る 1518
+take in,～を取り入れる； 理解する； を騙す 1519
+take on,～(意味・重要性)を帯びる； (仕事)を引き受ける 1520
+take after,～に似る 1521
+take up,～を占める； を取り上げる 1522
+take over,～(仕事)を引き継ぐ 1523
+take to,～が好きになる、習慣になる 1524
+put out,～を消す 1525
+put,言うと 1526
+do,間に合う、良い 1527
+make do with,～で間に合わせる 1528
+give away,～を(ただで)譲る、(秘密・気持ち)を明かす 1529
+give way,(～)に屈する、取って代わられる(to) 1530
+give in,(～)に屈する(to) 1531
+give off,～(光・熱・期待)を発する 1532
+come up with,～を思いつく 1533
+come about,生じる、起こる 1534
+come into being,生じる 1535
+come to,意識を戻す 1536
+come in handy,便利である、役に立つ 1537
+Come on.,おいおい、冗談だろ 1538
+go on to do,さらに続けて～する 1539
+go off,爆発する 1540
+Go ahead.,どうぞ 1541
+bring about,～を引き起こす、もたらす 1542
+bring oneself to do,～する気になる 1543
+bring A home to B,AをBに分からせる、実感させる 1544
+get at,～を言おうとする 1545
+get by,なんとかやりくりする 1546
+get across,～を伝える、分かってもらう 1547
+get away with,（罰を受けずに・ばれずに）逃げおおせる 1548
+let go of,～を手放す 1549
+let in,～を中に入れる 1550
+let alone,ましてや～ない 1551
+pull up,車をを止める 1552
+make it,(約束・予定通り)やり遂げる、都合がつく、間に合う 1553
+That's it,もう終わりだ； まさにそれだ、その通りだ 1554
+That is that,それでおしまいだ、それだけのこと 1555
+make of A,Aを～と評価する、判断する 1556
+make the most of,～を最大限利用する 1557
+make the best of,～をできる限り利用する 1558
+make sure,確実に～する； ～を確かめる 1559
+make ends meet,やりくりする、帳尻を合わせる 1560
+make believe,～のふりをする、真似をする 1561
+make a scene,ひと騒ぎする、醜態を晒す 1562
+think much of,～を高く評価する 1563
+think better of,～を考え直す、見直す 1564
+think twice,よく考える 1565
+on second thought,考え直して、やっぱり 1566
+show off,～を見せびらかせる、誇示する 1567
+show up,現れる、登場する 1568
+see to,～に対処する、の世話をする、を手配する 1569
+see through,～（嘘など）を見抜く； ～を最後までやり通す； (人)を最後まで助ける 1570
+in A's way,Aの邪魔になって 1571
+make one's way,前進する 1572
+find one's way,たどり着く、入ってくる 1573
+go out of one's way to do,わざわざ～する 1574
+by way of,～を経由して、～によって 1575
+have a way of doing,～する癖がある、傾向がある 1576
+under way,進行中で 1577
+true for,～に当てはまる 1578
+hold true,当てはまる、通用する 1579
+true to life,実物そっくり 1580
+give rise to,～を生じる、引き起こす 1581
+give birth to,～を産む； 生じる、引き起こす 1582
+put an end to,～を終わらせる 1583
+take turns,交替する、順番にやる 1584
+in turn,それが今度は 1585
+in return,(～の)お返しに(for) 1586
+out of the question,論外である、話にならない 1587
+in question,問題になっている、当の 1588
+on end,続けて 1589
+in a row,続けて 1590
+so far,これ(それ)までのところは 1591
+go so far as to do,～までする 1592
+up to,(最大で)～まで； ～次第で； ～(良くないこと)に従事して、～を企んで 1593
+leave behind,～を置き忘れる、残していく 1594
+leave out,～を省く、除外する、のけ者にする 1595
+rule out,～を除外する 1596
+back and forth,行ったり来たり 1597
+upside down,上下逆さまに 1598
+inside out,裏返しに 1599
+vice versa,その逆、逆もまた同様 1600
+other way around,あべこべ、逆 1601
+this and that,あれこれ、様々なこと 1602
+for the good of,～のために、利益となるように 1603
+as good as,～も同然 1604
+get the better of,～に勝る、打ち勝つ 1605
+know better,～するほど馬鹿ではない、もっと分別がある 1606
+to the best of my knowledge,私の知る限りでは 1607
+to say the least,控えめに言っても 1608
+take for granted,当然とみなす 1609
+take one's word for it,～の言うことを信じる 1610
+take it easy,気楽にやる 1611
+keep up with,～に遅れずについていく 1612
+catch up with,～に追いつく 1613
+fall behind,遅れる 1614
+keep in touch with,～と連絡を取り合う 1615
+look into,調べる、検討する 1616
+look over,～にざっと目を通す 1617
+look on,～を（…と）みなす(as) 1618
+pass on,～を（…に）手渡す、伝える(to) 1619
+pass for,～として（世間に）通る、通用する 1620
+pass out,気絶する 1621
+pass away,亡くなる 1622
+reach for,～に手を伸ばす 1623
+set out,(～へ)出発する(for) 1624
+set free,～を解放する 1625
+work out,～を解く、考え出す； うまくいく； トレーニングをする 1626
+work on,～(仕事)に取り組む 1627
+pick up,～を拾う、取り上げる； ～を車に乗せる、車で迎える； ～を買う； ～(言語・知識など)を身に付ける 1628
+part with,～を手放す、と別れる 1629
+live on,～に頼って生きる； を主食とする 1630
+fall back on,～に頼る、を最後の拠り所とする 1631
+rest on,～に頼る； に基づく 1632
+cut down on,～を減らす、削減する 1633
+point,要点、言いたいこと 1634
+to the point,的な射ている 1635
+make a point of doing,必ず～することにしている； ～を重視する 1636
+keep an eye on,～を見張る 1637
+have an eye for,～を見る目がある、鑑賞眼がある 1638
+turn a deaf ear to,～を聞こうとしない 1639
+make a face,顔をしかめる 1640
+remain to do,まだ～していない 1641
+have yet to do,まだ～していない 1642
+on behalf of,～に代わって、を代表して 1643
+second to none,誰にも負けない 1644
+once and for all,これを最後に、きっぱりと 1645
+for once,今回だけは、１回でいいから 1646
+at stake,危険にさらされて； 問題となって 1647
+in the wake of,～の後に続いて 1648
+Beats me.,分からない 1649
+Serves you right.,ざまあみろ、当然の報いだ 1650
+Give me a break.,よしてくれ 1651
+call it a day,今日はもう終わり 1652
+mental,頭の、知力の； 精神の、心の 1653
+spirit,精神(力)； 気分； 霊魂 1654
+soul,魂、精神； 人 1655
+material,素材、原料； 題材； 教材； 物質的な 1656
+sane,正気の 1657
+abuse,乱用、虐待； ～を乱用する、虐待する 1658
+addict,～を中毒にさせる； 麻薬中毒者 1659
+injure,～に怪我をさせる 1660
+wound,～を負傷させる 1661
+bleed,出血する 1662
+scratch,引っかき傷、かすり傷、～を引っかく 1663
+bruise,あざ、打撲傷 ～に打撲を負わせる 1664
+suffer,（～で）苦しむ、悩む（from） 1665
+torture,拷問； ～を拷問する、ひどく苦しめる 1666
+torment,苦痛； ～を苦しめる 1667
+vigor,活力 1668
+feeble,弱々しい 1669
+pale,(顔が)青白い、血色が悪い； (色が)淡い 1670
+fatigue,(極度の)疲労 1671
+weary,(～)に疲れている、飽き飽きしている(of) 1672
+tedious,退屈な 1673
+dreary,退屈な； ものわびしい 1674
+thumb,親指 1675
+palm,手のひら 1676
+wrist,手首 1677
+fist,握りこぶし 1678
+elbow,ひじ 1679
+muscle,筋肉 1680
+thigh,大股 1681
+knee,膝 1682
+heel,かかと 1683
+ankle,足首 1684
+toe,足の指、つま先 1685
+to one's feet,立って、立った状態で 1686
+chest,胸； タンス 1687
+limb,手足、四肢 1688
+forehead,ひたい 1689
+eyebrow,眉毛 1690
+eyelid,まぶた 1691
+eyelash,まつげ 1692
+beard,あごひげ 1693
+jaw,あご 1694
+chin,あご(の先端) 1695
+cheek,頬 1696
+tremble,(恐怖・興奮で)震える； 震動する 1697
+shiver,(寒さで)震える 1698
+wander,(目的もなく)さまよう、歩き回る 1699
+roam,歩き回る、徘徊する； ～を徘徊する 1700
+stroll,(ぶらぶら)歩く 1701
+stride,ひとまたぎ； 進歩； 大股で歩く 1702
+stumble,つまずく； (～に)偶然でくわす(on) 1703
+creep,這う、こっそり進む 1704
+linger,(立ち去らずに)ぐずぐずする、残存する 1705
+sniff,くんくん嗅ぐ； ～のにおいです嗅ぐ 1706
+sneeze,くしゃみをする 1707
+snore,いびきをかく 1708
+sneer,(～を)あざ笑う、鼻で笑う(at) 1709
+shrug,肩をすくめる 1710
+clear one's throat,咳払いする 1711
+frown,しかめ面をする； しかめ面 1712
+grimace,しかめ面をする； しかめ面 1713
+blink,まばたきをする； まばたき 1714
+yawn,あくびをする 1715
+mutter,つぶやく 1716
+murmur,つぶやく 1717
+mumble,つぶやく 1718
+whisper,ささやく 1719
+shriek,金切り声を上げる、叫ぶ 1720
+sob,すすり泣く 1721
+genuine,本物の、純粋の、心からの 1722
+authentic,本物の、本場の 1723
+fake,偽物の 1724
+false,(わざと)間違った、偽の 1725
+sincere,心からの、誠実な 1726
+sheer,全くの 1727
+elaborate,手の込んだ、精巧な 1728
+intricate,複雑な、込み入った 1729
+exquisite,精緻な、素晴らしい 1730
+sophisticated,洗練された； 精巧な 1731
+proficient,熟達した 1732
+negative,否定の、否定的な、消極的な、マイナスの 1733
+affirmative,肯定の、積極的な 1734
+positive,積極的な、プラスの； 確信している 1735
+vertical,垂直の、縦の 1736
+horizontal,水平の 1737
+parallel,(～と)平行の、類似した(to)； 類似(物)、匹敵するもの 1738
+indifferent,(～に対して)無関心な(to) 1739
+infamous,悪名高い、評判が悪い 1740
+notorious,悪名高い、評判が悪い 1741
+uneasy,落ち着かない、不安な 1742
+awkward,落ち着かない、気まずい、不器用な、ぎこちない 1743
+clumsy,不器用な、ぎこちない 1744
+restless,落ち着きがない、せわしない 1745
+relentless,執拗な、情け容赦のない 1746
+ruthless,情け容赦のない、冷酷な 1747
+reckless,向こう見ずな 1748
+stupid,ばかな、愚かな 1749
+silly,ばかな 1750
+absurd,ばかげた、理に適わない 1751
+ridiculous,ばかばかしい 1752
+fragile,壊れやすい、もろい 1753
+vulnerable,（～に対して）傷つきやすい、弱い(to) 1754
+delicate,繊細な、微細な、優美な、臆病な 1755
+stiff,堅い、凝っている； 堅苦しい 1756
+rigid,堅い； 厳格な、融通が利かない 1757
+flexible,曲がりやすい、柔軟性のある 1758
+arrogant,傲慢な 1759
+humble,謙虚な、つつましい； 質素な 1760
+stubborn,頑固な 1761
+obstinate,頑固な 1762
+fierce,激しい 1763
+harsh,厳しい 1764
+stern,厳格な、険しい 1765
+brave,勇敢な 1766
+bold,大胆な 1767
+timid,臆病な 1768
+deliberate,意図的な、故意の； 慎重な 1769
+discreet,慎重な 1770
+prudent,慎重な 1771
+subtle,微妙な、かすかな 1772
+drastic,劇的な、徹底的な 1773
+integral,必要不可欠な； 完全な 1774
+decent,まともな、きちんとした、上品な 1775
+neat,こぎれいな、すばらしい 1776
+tidy,きちんとした、こぎれいな 1777
+crude,生の、天然の、粗野な 1778
+valid,有効な、正当な 1779
+initiative,主導権、率先 1780
+security,安全性 1781
+merit,長所、利点 1782
+access,交通の便、入手、利用 1783
+technique,(専門的な)技術 1784
+horror,恐怖 1785
+terror,恐怖 1786
+symbol,象徴 1787
+barrier,障壁、障害 1788
+gap,隔たり、差 1789
+dilemma,ジレンマ、板挾み、難題 1790
+stretch,～を伸ばす； 伸びる、広がる 1791
+elite,エリート、精鋭； エリートの 1792
 series,連続 1793
-serial,連続した1794
-cereal,穀物、穀物加工食品1795
-irregular,不規則な1796
-item,品目、項目1797
-relax,～をくつろがせる； くつろぐ1798
-mood,気分、雰囲気1799
-tight,きつい1800
-severe,厳しい1801
-puzzle,～を戸惑わせる1802
-pause,一時休止； 一時休止する1803
-reverse,～を逆にする、に逆行する； 逆の； 逆1804
-pose,姿勢 ポーズをとる； ～(問題・質問)を提起する1805
-random,無作為の、でたらめな1806
-bitter,苦い、つらい1807
-float,(水中・空中に)浮く； ～を浮かべる1808
-recipe,レシピ、調理法； 秘訣1809
-luxury,贅沢、贅沢品1810
-charity,慈悲、慈善1811
-athlete,運動選手1812
-laundry,洗濯物1813
-label,～に(…という)レッテルを貼る(as)1814
-loose,ゆるんだ、だらしない1815
-humor,ユーモア； 機嫌1816
-image,イメージ、画像、映像1817
-amateur,アマチュア、素人1818
-thrill,～をわくわくさせる； 興奮1819
-theme,テーマ、主題1820
-leisure,余暇1821
-alcohol,アルコール、酒1822
-vitamin,ビタミン1823
-liver,肝臓1824
-kidney,腎臓1825
-chaos,混沌、無秩序1826
-connect,～を繋げる1827
-appoint,～を指名する、指定する1828
-guarantee,～を保障(保証)する1829
-aesthetic,美的な、美学の1830
-celebrity,有名人1831
-animate,～を活気づける、に生命を与える1832
-department,部署、部門、省1833
-depart,出発する1834
-casual,何気ない、偶然の； 略式の1835
-challenge,(やりがいのある)難題、課題； 挑戦； ～に挑む、挑戦する； ～に異議を唱える1836
-naive,世間知らずの、うぶな1837
-alien,異質な、外国の 外国人1838
-resort,(～に)訴える(to) 行楽地1839
-web,クモの巣； (インターネット上の)ネットワーク、ウェブ1840
-faint,かすかな、ぼんやりした 失神する1841
-interview,インタビュー、面接1842
-bond,きづな、結束1843
-tissue,(細胞の)組織 ； (ガーゼなどの)布、繊維1844
-campaign,選挙活動、政治活動、軍事行動、促進販売1845
-boss,上司1846
-cafeteria,社員食堂、学食1847
-companion,仲間、旅の連れ1848
-mode,様式、方式、形態1849
-mineral,鉱物1850
-foul,（臭いなどが）不快な、汚い； 反則の； 反則1851
-educate,～を教育する1852
-discipline,しつけ、規律 ～をしつける、訓練する1853
-instruct,Aに～するように指示する1854
-enlighten,～を啓蒙・啓発する、に知らせる1855
-illuminate,～を照らす； (問題)を明らかにする1856
-inspire,～を（…するよう）奮起させる、の創作意欲をかき立てる(to do)1857
-incentive,動機付け、やる気を出させるもの1858
-enroll,～を登録する、入学・入会させる； 入学する1859
-register,～を登録する、記録する； 書留にする； 登録する1860
-sign up,（～に）登録する(for)1861
-tuition,授業料1862
-tutor,家庭教師、個人指導教員； ～を(個人的に)教える1863
-faculty,(大学の)学部； (身体・精神の)能力1864
-facility,施設、設備； 能力、容易さ1865
-sophomore,(高校・大学の)二年生1866
-semester,(二学期制の)学期1867
-curriculum,カリキュラム、教科課程1868
-diploma,(大学の)学位1869
-grade,等級、学年； 評価、成績1870
-mark,成績； 印、指標； ～を印す1871
-rank,等級、階級 位置する； ～を位置づける1872
-profession,(知的・専門的な)職業1873
-vocation,天職1874
-candidate,志願者、候補者1875
-colleague,同僚1876
-technology,科学技術1877
-innovation,革新、革新技術1878
-novel,小説 斬新な、新奇な1879
-patent,特許； ～の特許をとる1880
-breakthrough,大躍進1881
-exploit,～を開発・利用する； 搾取する1882
-tool,道具、工具1883
-implement,道具、用具； ～を実行する1884
-instrument,器具； 楽器1885
-machinery,機械類1886
-appliance,電気製品1887
-apparatus,装置・器具(一式)1888
-gadget,機械器具1889
-function,機能、働き； 機能する1890
-electric,電気の1891
-electronic,電子の1892
-vehicle,乗り物； 伝達手段、媒体、原動力1893
-automobile,自動車1894
-wheel,車輪； (車の)ハンドル1895
-pedestrian,歩行者1896
-pave,～を舗装する1897
-manual,手動の、手作業の マニュアル、説明書1898
-automatic,自動の1899
-cover,～を覆う； ～の範囲にわたる； ～を報道する1900
-fine,すばらしい； 細かい； 罰金； ～に罰金を科す1901
-leave,～を出発する； ～を残す； 休暇； 許可1902
-meet,～に会う； ～(要求・必要)を満たす1903
-strike,～を打つ； ～に(…という)印象を与える(as)； ストライキ1904
-run,走る； ～を経営する1905
-coin,硬貨； ～(新語)を作り出す1906
-room,部屋； 空間； 余地、可能性1907
-story,物語； ～階建て1908
-manner,方法、やり方； (-s)礼儀作法、行儀1909
-address,住所； ～に差し向ける； 取り組む； 話しかける1910
-check,～を確かめる； ～を抑制する； 検査； 抑制、阻止； 小切手1911
-forward,前方へ； ～(手紙・メール)を転送する1912
-chance,機会； 可能性、見込み； 偶然1913
-air,空気、空； 外見、態度、雰囲気1914
-lot,大量のもの； 区画、用地； 分け前、宿命1915
-change,～を変える； 変化； 釣り銭、小銭1916
-second,二番目の、秒、(-s)おかわり1917
-still,まだ； それでも； 静止した1918
-cross,～を横切る； 機嫌の悪い1919
-will,意志； 遺言1920
-sound,音、～のように聞こえる、思える； 健全な； ぐっすりと、無事に1921
-fast,速い； 固定した； 速く； しっかりと、ぐっすりと、断食、断食する1922
-life,人生； 生活； 生命、人名； （美術での）実物、本物1923
-art,芸術； 技術； 人文学1924
-service,奉仕、給仕、設備、公共事業、勤務、礼拝、兵役1925
-order,命令、注文； 順序、秩序； ～を命じる、注文する1926
-practice,練習、実践； 慣習、慣行1927
-minute,極めて小さい、微細な1928
-excuse,言い訳、理由1929
-wind,～を巻きつける、巻く1930
-grind,～を（粉に）挽く、すりつぶす1931
-command,命令； (言語を)自由に使う能力； ～を見晴らす1932
-charge,～を(…で)非難する； 告発する(with)； ～に料金を課す； ～に責任を課す； ～を充電する； 非難； 料金； 責任1933
-history,歴史、歴史学； 経歴1934
-dinosaur,恐竜1935
-ape,サル、類人猿1936
-primate,霊長類の動物1937
-mammal,哺乳類1938
-upright,直立した 直立して1939
-archaeology,考古学1940
-civilization,文明1941
-civil,市民の1942
-medieval,中世の1943
-feudal,封建制の1944
-Renaissance,ルネサンス1945
-revolution,革命、改革1946
-empire,帝国1947
-imperial,帝国の1948
-colony,植民地、集落1949
-slave,奴隷； (～に)とらわれている人(to)1950
-modern,現代の1951
-metropolis,大都市1952
-bustle,喧噪1953
-skyscraper,超高層ビル1954
-military,軍事の1955
-army,陸軍、軍隊1956
-arms,武器、軍備1957
-navy,海軍1958
-navigation,航海1959
-soldier,軍人、兵士1960
-troop,軍隊、兵士1961
-hostage,人質1962
-weapon,武器1963
-sword,剣1964
-strategy,戦略、方策1965
-tactics,戦術1966
-neutral,中立の、どっちつかずの1967
-ally,同盟国、味方； 同盟する1968
-rally,集会； 再結集する1969
-assault,～を襲撃する； 襲撃1970
-raid,急襲1971
-assassination,暗殺1972
-thus,それ故に； このように1973
-hence,それ故に； 後に1974
-nevertheless,それにもかかわらず1975
-nonetheless,それにもかかわらず1976
-notwithstanding,それにもかかわらず1977
-all the same,それでもやはり、それにもかかわらず1978
-despite,～にもかかわらず1979
-besides,それに加えて、さらに； ～に加えて1980
-moreover,さらに1981
-furthermore,さらに1982
-whereas,(～である)その一方で1983
-on the other hand,その一方で1984
-meanwhile,その間に1985
-in the meantime,その間に1986
-that is,すなわち、つまり1987
-namely,すなわち、つまり1988
-in short,手短に言うと、つまりは1989
-say,例えば1990
-for instance,例えば1991
-indeed,確かに、本当に1992
-somewhat,いくぶん、やや1993
-somehow,どういうわけか； 何らかの方法で1994
-otherwise,さもなければ； その他の点で； 違ったふうに、別のやり方で1995
-given,～と仮定すると、があれば、を考慮すると； 特定の、任意の1996
-rightly,正当に、当然のことながら1997
-justly,正当に、当然のことながら1998
-mistakenly,間違って1999
-reportedly,報じられるところでは2000
-presumably,おそらく、たぶん2001
-seemingly,見たところでは2002
-as a matter of fact,実は2003
-for that matter,さらに言えば2004
-thereby,それによって2005
-whatsoever,全く、少しでも2006
-beneath,～の下に2007
-premise,前提、仮定2008
-entity,存在物、統一体2009
-discourse,論文、講演、言説2010
-transcend,～を越える、超越する2011
-ascribe,(に)～の原因を帰す(to)2012
-intrinsic,本来備わっている2013
-articulate,～を(はっきり)言う、発音する； ～をつなぐ2014
-formula,公式； 決まり切ったやり方； 製法2015
-contend,と主張する(that)； (～と)争う、(に)対処する(with)2016
-advocate,～(主義・理論)を提唱する、主張する； 提唱者2017
-delegation,代表派遣、使節2018
-sanction,制裁； 是認、許可2019
-pledge,約束、誓約； ～を約束する、誓約する(to do, that)2020
-agenda,協議事項、議題2021
-amend,～を修正する、改正する2022
-subsidy,補助金、助成金2023
-intuition,直感2024
-discern,～を見分ける、識別する2025
-skeptical,懐疑的な2026
-benign,良性の、害のない； 有益な2027
-malicious,悪意のある2028
-hypocrisy,偽善2029
-undermine,～を阻害する、弱体化する2030
-impair,～を弱める、損なう2031
-deteriorate,悪化する2032
-trigger,～を引き起こす、引き金となる； 引き金2033
-induce,～を誘発する、を(…)する気にさせる(to do)2034
-deduce,～(結論)を導き出す、推論する2035
-intrigue,～の興味をそそる； 陰謀2036
-momentum,力、勢い、運動量2037
-velocity,速度2038
-chronic,長期的な、慢性的な2039
-lapse,(時間の)経過； (ちょっとした)誤り2040
-gravity,重力； 重大さ2041
-orbit,軌道 ～の軌道を回る2042
-axis,軸2043
-fluid,流動体； 流動性の2044
-resilient,弾力性のある； 回復力のある、立ち直りの早い2045
-erode,腐食する； ～を腐食する、侵食する2046
-erupt,噴火する2047
-assimilate,～を同化する； 消化・吸収する； 同化する2048
-adhere,(～に)くっつく、(を)固守する(to)2049
-exile,(祖国からの)追放、亡命； ～を追放する2050
-probe,探査； 探査機 ～を厳密に調べる2051
-scrutinize,～を綿密に調べる2052
-verify,～を(正しいと)証明する、確かめる2053
-census,国勢調査2054
-censorship,検閲2055
-index,指標、指針、指数； 見出し2056
-defy,～を拒む、に反抗する2057
-comply,～(規則・命令・基準)に従う、合致する(with)2058
-synthesize,～を総合する、合成する、合成して作り出す2059
-coordinate,～を同調して動かす、調整する2060
-subordinate,従属している、下位の； 二次的な 従属するもの、下位のもの ～を従属させる2061
-incorporate,～を(…に)組み込む(into)2062
-comprise,～を構成する； ～からなる2063
-manipulate,～を操作する、あやつる2064
-tangible,触れることができる； 明白な、具体的な2065
-designate,～を指名する、指定する2066
-depict,～を描く2067
-ingenious,創意工夫に富んだ2068
-ingenuous,純真な、無邪気な2069
-proximity,(～に)近いこと(to)2070
-dismay,～を動揺させる； 動揺2071
-appall,～をぎょっとさせる2072
-stun,～をびっくりさせる、茫然とさせる2073
-marvel,(～に)驚く、驚き(at)； 驚き2074
-perplex,～を当惑させる2075
-bewilder,～を当惑させる2076
-astound,～をびっくりさせる2077
-startle,～をびっくりさせる2078
-anticipate,～を予期する2079
-apprehension,懸念、不安2080
-deplore,～を嘆く2081
-agony,苦悩、苦痛2082
-inflict,～(苦痛・打撃)を与える2083
-afflict,～を苦しめる2084
-ambivalent,矛盾する、相反する、どちらか決めかねて2085
-arbitrary,任意の、独断的な、恣意的な、気まぐれな2086
-unanimous,満場一致の2087
-consensus,意見の一致、合意2088
-ponder,～をじっくり考える2089
-reckon,～を推定する、と考える2090
-soar,急上昇する、高く舞い上がる2091
-roar,鳴り響く、吠える2092
-peer,仲間、同等の人2093
-reap,～を収穫する； (報酬・利益)を手に入れる2094
-curb,～を抑制する、(歩道の)縁石2095
-carve,～を彫る、作る2096
-cue,合図、指図2097
-queue,行列2098
-slap,～をぴしゃりと叩く2099
-clap,～(手)を叩く2100
-hatch,(卵が)かえる、孵化する2101
-wreck,～を大破させる、台なしにする； 難破、（破損した）残骸2102
-drain,下水、排水； ～の排水をする、を消耗する2103
-sewage,下水2104
-sew,～を縫う2105
-sober,しらふの； ありのままの2106
-kin,血縁、親族2107
-merge,合併する2108
-riot,暴動、反乱2109
-galaxy,銀河、星雲2110
-cosmos,宇宙2111
-cosmic,宇宙の2112
-celestial,天体の2113
-comet,彗星2114
-particle,粒子2115
-debris,残骸、ゴミ2116
-psychiatric,精神医学の2117
-contaminate,～を汚染する2118
-specimen,標本、見本2119
-indigenous,原住民の、その土地固有の2120
-province,州、省； (-s)地方2121
-peril,危険2122
-hazard,危険、危険要素2123
-plausible,もっともらしい、まことしやかな2124
-preliminary,予備の、事前の2125
-anonymous,匿名の2126
-obsolete,すたれた、時代遅れの2127
-innate,生まれつき持っている； 固有の2128
-subsequent,その後の2129
-alleviate,～を軽くする、軽減する2130
-mandatory,強制的な、必須の2131
-imperative,必須の、急務の2132
-advent,出現、到来2133
-heredity,遺伝2134
-coherent,首尾一貫した2135
-legitimate,正当な、合法的な2136
-certificate,証明書、免許2137
-autonomy,自治、自立、自主性2138
-withstand,～に耐える2139
-supplement,～を補う； 補うもの、栄養補助食品2140
-dispose,(～する)気にさせる(to do)； ～を配置する2141
-humane,思いやりのある、人道的な2142
-personnel,(会社等の)人員部； 全職員2143
-maxim,格言、原理2144
-questionnaire,アンケート調査2145
-manifest,～を(言動で)明らかに示す； 明白な2146
-connotation,言外の意味, 含蓄2147
-dogma,教義、定説； 独断2148
-prophet,予言者2149
-symmetry,左右対称、対称2150
-rectangular,長方形の2151
-diameter,直径2152
-soothe,～をなだめる、和らげる2153
-wither,しおれる、弱まる2154
-surge,急増、急騰 急増する、急騰する2155
-proliferate,急増する、繁殖する2156
-fetch,～を取ってくる, 連れてくる2157
-immerse,～を浸す； 没頭させる2158
-hamper,～を妨げる2159
-forge,～を偽造する2160
-token,しるし2161
-mock,～をあざ笑う； 模擬の、偽の2162
-toll,損害、死傷者； 通行料、通話料2163
-call it a day,今日はもう終わり2164
-flaw,ひび、欠陥2165
-cater,(食事などを)まかなう、(要求に)応じる2166
-edible,食べられる2167
-delinquent,非行の2168
-gigantic,巨大な、大きな2169
-static,静止した、動きのない2170
-antique,古い、骨董の2171
-transact,～(業務・取引)を処理する、行う2172
-ornament,装飾2173
-corridor,廊下2174
-warrant,～を保証する； 正当化する2175
-mischief,いたずら、悪さ2176
+serial,連続した 1794
+cereal,穀物、穀物加工食品 1795
+irregular,不規則な 1796
+item,品目、項目 1797
+relax,～をくつろがせる； くつろぐ 1798
+mood,気分、雰囲気 1799
+tight,きつい 1800
+severe,厳しい 1801
+puzzle,～を戸惑わせる 1802
+pause,一時休止； 一時休止する 1803
+reverse,～を逆にする、に逆行する； 逆の； 逆 1804
+pose,姿勢 ポーズをとる； ～(問題・質問)を提起する 1805
+random,無作為の、でたらめな 1806
+bitter,苦い、つらい 1807
+float,(水中・空中に)浮く； ～を浮かべる 1808
+recipe,レシピ、調理法； 秘訣 1809
+luxury,贅沢、贅沢品 1810
+charity,慈悲、慈善 1811
+athlete,運動選手 1812
+laundry,洗濯物 1813
+label,～に(…という)レッテルを貼る(as) 1814
+loose,ゆるんだ、だらしない 1815
+humor,ユーモア； 機謙 1816
+image,イメージ、画像、映像 1817
+amateur,アマチュア、素人 1818
+thrill,～をわくわくさせる； 興奮 1819
+theme,テーマ、主題 1820
+leisure,余暇 1821
+alcohol,アルコール、酒 1822
+vitamin,ビタミン 1823
+liver,肝臓 1824
+kidney,腎臓 1825
+chaos,混沌、無秩序 1826
+connect,～を繋げる 1827
+appoint,～を指名する、指定する 1828
+guarantee,～を保障(保証)する 1829
+aesthetic,美的な、美学の 1830
+celebrity,有名人 1831
+animate,～を活気づける、に生命を与える 1832
+department,部署、部門、省 1833
+depart,出発する 1834
+casual,何気ない、偶然の； 略式の 1835
+challenge,(やりがいのある)難題、課題； 挑戦； ～に挑む、挑戦する； ～に異議を唱える 1836
+naive,世間知らずの、うぶな 1837
+alien,異質な、外国の 外国人 1838
+resort,(～に)訴える(to) 行楽地 1839
+web,クモの巣； (インターネット上の)ネットワーク、ウェブ 1840
+faint,かすかな、ぼんやりした 失神する 1841
+interview,インタビュー、面接 1842
+bond,きづな、結束 1843
+tissue,(細胞の)組織 ； (ガーゼなどの)布、繊維 1844
+campaign,選挙活動、政治活動、軍事行動、促進販売 1845
+boss,上司 1846
+cafeteria,社員食堂、学食 1847
+companion,仲間、旅の連れ 1848
+mode,様式、方式、形態 1849
+mineral,鉱物 1850
+foul,（臭いなどが）不快な、汚い； 反則の； 反則 1851
+educate,～を教育する 1852
+discipline,しつけ、規律 ～をしつける、訓練する 1853
+instruct,Aに～するように指示する 1854
+enlighten,～を啓蒙・啓発する、に知らせる 1855
+illuminate,～を照らす； (問題)を明らかにする 1856
+inspire,～を（…するよう）奮起させる、の創作意欲をかき立てる(to do) 1857
+incentive,動機付け、やる気を出させるもの 1858
+enroll,～を登録する、入学・入会させる； 入学する 1859
+register,～を登録する、記録する； 書留にする； 登録する 1860
+sign up,（～に）登録する(for) 1861
+tuition,授業料 1862
+tutor,家庭教師、個人指導教員； ～を(個人的に)教える 1863
+faculty,(大学の)学部； (身体・精神の)能力 1864
+facility,施設、設備； 能力、容易さ 1865
+sophomore,(高校・大学の)二年生 1866
+semester,(二学期制の)学期 1867
+curriculum,カリキュラム、教科課程 1868
+diploma,(大学の)学位 1869
+grade,等級、学年； 評価、成績 1870
+mark,成績； 印、指標； ～を印す 1871
+rank,等級、階級 位置する； ～を位置づける 1872
+profession,(知的・専門的な)職業 1873
+vocation,天職 1874
+candidate,志願者、候補者 1875
+colleague,同僚 1876
+technology,科学技術 1877
+innovation,革新、革新技術 1878
+novel,小説 斬新な、新奇な 1879
+patent,特許； ～の特許をとる 1880
+breakthrough,大躍進 1881
+exploit,～を開発・利用する； 搾取する 1882
+tool,道具、工具 1883
+implement,道具、用具； ～を実行する 1884
+instrument,器具； 楽器 1885
+machinery,機械類 1886
+appliance,電気製品 1887
+apparatus,装置・器具(一式) 1888
+gadget,機械器具 1889
+function,機能、働き； 機能する 1890
+electric,電気の 1891
+electronic,電子の 1892
+vehicle,乗り物； 伝達手段、媒体、原動力 1893
+automobile,自動車 1894
+wheel,車輪； (車の)ハンドル 1895
+pedestrian,歩行者 1896
+pave,～を舗装する 1897
+manual,手動の、手作業の マニュアル、説明書 1898
+automatic,自動の 1899
+cover,～を覆う； ～の範囲にわたる； ～を報道する 1900
+fine,すばらしい； 細かい； 罰金； ～に罰金を科す 1901
+leave,～を出発する； ～を残す； 休暇； 許可 1902
+meet,～に会う； ～(要求・必要)を満たす 1903
+strike,～を打つ； ～に(…という)印象を与える(as)； ストライキ 1904
+run,走る； ～を経営する 1905
+coin,硬貨； ～(新語)を作り出す 1906
+room,部屋； 空間； 余地、可能性 1907
+story,物語； ～階建て 1908
+manner,方法、やり方； (-s)礼儀作法、行儀 1909
+address,住所； ～に差し向ける； 取り組む； 話しかける 1910
+check,～を確かめる； ～を抑制する； 検査； 抑制、阻止； 小切手 1911
+forward,前方へ； ～(手紙・メール)を転送する 1912
+chance,機会； 可能性、見込み； 偶然 1913
+air,空気、空； 外見、態度、雰囲気 1914
+lot,大量のもの； 区画、用地； 分け前、宿命 1915
+change,～を変える； 変化； 釣り銭、小銭 1916
+second,二番目の、秒、(-s)おかわり 1917
+still,まだ； それでも； 静止した 1918
+cross,～を横切る； 機嫌の悪い 1919
+will,意志； 遺言 1920
+sound,音、～のように聞こえる、思える； 健全な； ぐっすりと、無事に 1921
+fast,速い； 固定した； 速く； しっかりと、ぐっすりと、断食、断食する 1922
+life,人生； 生活； 生命、人名； （美術での）実物、本物 1923
+art,芸術； 技術； 人文学 1924
+service,奉仕、給仕、設備、公共事業、勤務、礼拝、兵役 1925
+order,命令、注文； 順序、秩序； ～を命じる、注文する 1926
+practice,練習、実践； 慣習、慣行 1927
+minute,極めて小さい、微細な 1928
+excuse,言い訳、理由 1929
+wind,～を巻きつける、巻く 1930
+grind,～を（粉に）挽く、すりつぶす 1931
+command,命令； (言語を)自由に使う能力； ～を見晴らす 1932
+charge,～を(…で)非難する； 告発する(with)； ～に料金を課す； ～に責任を課す； ～を充電する； 非難； 料金； 責任 1933
+history,歴史、歴史学； 経歴 1934
+dinosaur,恐竜 1935
+ape,サル、類人猿 1936
+primate,霊長類の動物 1937
+mammal,哺乳類 1938
+upright,直立した 直立して 1939
+archaeology,考古学 1940
+civilization,文明 1941
+civil,市民の 1942
+medieval,中世の 1943
+feudal,封建制の 1944
+Renaissance,ルネサンス 1945
+revolution,革命、改革 1946
+empire,帝国 1947
+imperial,帝国の 1948
+colony,植民地、集落 1949
+slave,奴隷； (～に)とらわれている人(to) 1950
+modern,現代の 1951
+metropolis,大都市 1952
+bustle,喧噪 1953
+skyscraper,超高層ビル 1954
+military,軍事の 1955
+army,陸軍、軍隊 1956
+arms,武器、軍備 1957
+navy,海軍 1958
+navigation,航海 1959
+soldier,軍人、兵士 1960
+troop,軍隊、兵士 1961
+hostage,人質 1962
+weapon,武器 1963
+sword,剣 1964
+strategy,戦略、方策 1965
+tactics,戦術 1966
+neutral,中立の、どっちつかずの 1967
+ally,同盟国、味方； 同盟する 1968
+rally,集会； 再結集する 1969
+assault,～を襲撃する； 襲撃 1970
+raid,急襲 1971
+assassination,暗殺 1972
+thus,それ故に； このように 1973
+hence,それ故に； 後に 1974
+nevertheless,それにもかかわらず 1975
+nonetheless,それにもかかわらず 1976
+notwithstanding,それにもかかわらず 1977
+all the same,それでもやはり、それにもかかわらず 1978
+despite,～にもかかわらず 1979
+besides,それに加えて、さらに； ～に加えて 1980
+moreover,さらに 1981
+furthermore,さらに 1982
+whereas,(～である)その一方で 1983
+on the other hand,その一方で 1984
+meanwhile,その間に 1985
+in the meantime,その間に 1986
+that is,すなわち、つまり 1987
+namely,すなわち、つまり 1988
+in short,手短に言うと、つまりは 1989
+say,例えば 1990
+for instance,例えば 1991
+indeed,確かに、本当に 1992
+somewhat,いくぶん、やや 1993
+somehow,どういうわけか； 何らかの方法で 1994
+otherwise,さもなければ； そのその他の点で； 違ったふうに、別のやり方で 1995
+given,～と仮定すると、があれば、を考慮すると； 特定の、任意の 1996
+rightly,正当に、当然のことながら 1997
+justly,正当に、当然のことながら 1998
+mistakenly,間違って 1999
+reportedly,報じられるところでは 2000
+presumably,おそらく、たぶん 2001
+seemingly,見たところでは 2002
+as a matter of fact,実は 2003
+for that matter,さらに言えば 2004
+thereby,それによって 2005
+whatsoever,全く、少しでも 2006
+beneath,～の下に 2007
+premise,前提、仮定 2008
+entity,存在物、統一体 2009
+discourse,論文、講演、言説 2010
+transcend,～を越える、超越する 2011
+ascribe,(に)～の原因を帰す(to) 2012
+intrinsic,本来備わっている 2013
+articulate,～を(はっきり)言う、発音する； ～をつなぐ 2014
+formula,公式； 決まり切ったやり方； 製法 2015
+contend,と主張する(that)； (～と)争う、(に)対処する(with) 2016
+advocate,～(主義・理論)を提唱する、主張する； 提唱者 2017
+delegation,代表派遣、使節 2018
+sanction,制裁； 是認、許可 2019
+pledge,約束、誓約； ～を約束する、誓約する(to do, that) 2020
+agenda,協議事項、議題 2021
+amend,～を修正する、改正する 2022
+subsidy,補助金、助成金 2023
+intuition,直感 2024
+discern,～を見分ける、識別する 2025
+skeptical,懐疑的な 2026
+benign,良性の、害のない； 有益な 2027
+malicious,悪意のある 2028
+hypocrisy,偽善 2029
+undermine,～を阻害する、弱体化する 2030
+impair,～を弱める、損なう 2031
+deteriorate,悪化する 2032
+trigger,～を引き起こす、引き金となる； 引き金 2033
+induce,～を誘発する、を(…)する気にさせる(to do) 2034
+deduce,～(結論)を導き出す、推論する 2035
+intrigue,～の興味をそそる； 陰謀 2036
+momentum,力、勢い、運動量 2037
+velocity,速度 2038
+chronic,長期的な、慢性的な 2039
+lapse,(時間の)経過； (ちょっとした)誤り 2040
+gravity,重力； 重大さ 2041
+orbit,軌道 ～の軌道を回る 2042
+axis,軸 2043
+fluid,流動体； 流動性の 2044
+resilient,弾力性のある； 回復力のある、立ち直りの早い 2045
+erode,腐食する； ～を腐食する、侵食する 2046
+erupt,噴火する 2047
+assimilate,～を同化する； 消化・吸収する； 同化する 2048
+adhere,(～に)くっつく、(を)固守する(to) 2049
+exile,(祖国からの)追放、亡命； ～を追放する 2050
+probe,探査； 探査機 ～を厳密に調べる 2051
+scrutinize,～を綿密に調べる 2052
+verify,～を(正しいと)証明する、確かめる 2053
+census,国勢調査 2054
+censorship,検閲 2055
+index,指標、指針、指数； 見出し 2056
+defy,～を拒む、に反抗する 2057
+comply,～(規則・命令・基準)に従う、合致する(with) 2058
+synthesize,～を総合する、合成する、合成して作り出す 2059
+coordinate,～を同調して動かす、調整する 2060
+subordinate,従属している、下位の； 二次的な 従属するもの、下位のもの ～を従属させる 2061
+incorporate,～を(…に)組み込む(into) 2062
+comprise,～を構成する； ～からなる 2063
+manipulate,～を操作する、あやつる 2064
+tangible,触れることができる； 明白な、具体的な 2065
+designate,～を指名する、指定する 2066
+depict,～を描く 2067
+ingenious,創意工夫に富んだ 2068
+ingenuous,純真な、無邪気な 2069
+proximity,(～に)近いこと(to) 2070
+dismay,～を動揺させる； 動揺 2071
+appall,～をぎょっとさせる 2072
+stun,～をびっくりさせる、茫然とさせる 2073
+marvel,(～に)驚く、驚き(at)； 驚き 2074
+perplex,～を当惑させる 2075
+bewilder,～を当惑させる 2076
+astound,～をびっくりさせる 2077
+startle,～をびっくりさせる 2078
+anticipate,～を予期する 2079
+apprehension,懸念、不安 2080
+deplore,～を嘆く 2081
+agony,苦悩、苦痛 2082
+inflict,～(苦痛・打撃)を与える 2083
+afflict,～を苦しめる 2084
+ambivalent,矛盾する、相反する、どちらか決めかねて 2085
+arbitrary,任意の、独断的な、恣意的な、気まぐれな 2086
+unanimous,満場一致の 2087
+consensus,意見の一致、合意 2088
+ponder,～をじっくり考える 2089
+reckon,～を推定する、と考える 2090
+soar,急上昇する、高く舞い上がる 2091
+roar,鳴り響く、吠える 2092
+peer,仲間、同等の人 2093
+reap,～を収穫する； (報酬・利益)を手に入れる 2094
+curb,～を抑制する、(歩道の)縁石 2095
+carve,～を彫る、作る 2096
+cue,合図、指図 2097
+queue,行列 2098
+slap,～をぴしゃりと叩く 2099
+clap,～(手)を叩く 2100
+hatch,(卵が)かえる、孵化する 2101
+wreck,～を大破させる、台なしにする； 難破、（破損した）残骸 2102
+drain,下水、排水； ～の排水をする、を消耗する 2103
+sewage,下水 2104
+sew,～を縫う 2105
+sober,しらふの； ありのままの 2106
+kin,血縁、親族 2107
+merge,合併する 2108
+riot,暴動、反乱 2109
+galaxy,銀河、星雲 2110
+cosmos,宇宙 2111
+cosmic,宇宙の 2112
+celestial,天体の 2113
+comet,彗星 2114
+particle,粒子 2115
+debris,残骸、ゴミ 2116
+psychiatric,精神医学の 2117
+contaminate,～を汚染する 2118
+specimen,標本、見本 2119
+indigenous,原住民の、その土地固有の 2120
+province,州、省； (-s)地方 2121
+peril,危険 2122
+hazard,危険、危険要素 2123
+plausible,もっともらしい、まことしやかな 2124
+preliminary,予備の、事前の 2125
+anonymous,匿名の 2126
+obsolete,すたれた、時代遅れの 2127
+innate,生まれつき持っている； 固有の 2128
+subsequent,その後の 2129
+alleviate,～を軽くする、軽減する 2130
+mandatory,強制的な、必須の 2131
+imperative,必須の、急務の 2132
+advent,出現、到来 2133
+heredity,遺伝 2134
+coherent,首尾一貫した 2135
+legitimate,正当な、合法的な 2136
+certificate,証明書、免許 2137
+autonomy,自治、自立、自主性 2138
+withstand,～に耐える 2139
+supplement,～を補う； 補うもの、栄養補助食品 2140
+dispose,(～する)気にさせる(to do)； ～を配置する 2141
+humane,思いやりのある、人道的な 2142
+personnel,(会社等の)人員部； 全職員 2143
+maxim,格言、原理 2144
+questionnaire,アンケート調査 2145
+manifest,～を(言動で)明らかに示す； 明白な 2146
+connotation,言外の意味, 含蓄 2147
+dogma,教義、定説； 独断 2148
+prophet,予言者 2149
+symmetry,左右対称、対称 2150
+rectangular,長方形の 2151
+diameter,直径 2152
+soothe,～をなだめる、和らげる 2153
+wither,しおれる、弱まる 2154
+surge,急増、急騰 急増する、急騰する 2155
+proliferate,急増する、繁殖する 2156
+fetch,～を取ってくる, 連れてくる 2157
+immerse,～を浸す； 没頭させる 2158
+hamper,～を妨げる 2159
+forge,～を偽造する 2160
+token,しるし 2161
+mock,～をあざ笑う； 模擬の、偽の 2162
+toll,損害、死傷者； 通行料、通話料 2163
+call it a day,今日はもう終わり 2164
+flaw,ひび、欠陥 2165
+cater,(食事などを)まかなう、(要求に)応じる 2166
+edible,食べられる 2167
+delinquent,非行の 2168
+gigantic,巨大な、大きな 2169
+static,静止した、動きのない 2170
+antique,古い、骨董の 2171
+transact,～(業務・取引)を処理する、行う 2172
+ornament,装飾 2173
+corridor,廊下 2174
+warrant,～を保証する； 正当化する 2175
+mischief,いたずら、悪さ 2176
 </script>
 </body>
 </html>
