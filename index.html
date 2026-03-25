@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=5.0,user-scalable=yes,viewport-fit=cover">
-    <title>鉄壁修行 V8.0 究極管理版</title>
+    <title>鉄壁修行 V9.0 究極管理版</title>
     <style>
         :root {
             --bg: #070b14;
@@ -77,17 +77,18 @@
 
 <div id="setup" class="active">
     <div class="container">
-        <h1>鉄壁修行 V8.0</h1>
+        <h1>鉄壁修行 V9.0</h1>
         
         <div class="input-group" style="margin-bottom:12px; background: #1e1b4b;">
             <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom:4px;">
-                <span>進捗データ（1c,2a...）</span>
+                <span>手動インポート/書き出し</span>
                 <div>
                     <button class="io-btn" onclick="exportData()">出す</button>
-                    <button class="io-btn" style="background:var(--gray);" onclick="document.getElementById('importArea').value=''">消す</button>
+                    <button class="io-btn" style="background:var(--gray);" onclick="clearImport()">消去</button>
                 </div>
             </div>
-            <textarea id="importArea" placeholder="ここに保存用データを貼り付け"></textarea>
+            <textarea id="importArea" placeholder="データを貼り付けて上書き復元"></textarea>
+            <div style="font-size:9px; color:var(--success); margin-top:5px; text-align:right;">※ブラウザに自動保存されています</div>
         </div>
 
         <div class="range-box">
@@ -144,7 +145,7 @@
     </div>
     <div style="display:flex; justify-content: space-between; align-items:center; padding-bottom: 10px;">
         <button onclick="finishTraining()" style="background:none; border:none; color:var(--gray); font-size:11px;">中断 (Space)</button>
-        <button onclick="quickCopy()" id="midBtn" class="sm-btn">進捗コピー</button>
+        <button onclick="quickCopy()" id="midBtn" class="sm-btn">進捗を一時保存</button>
     </div>
 </div>
 
@@ -152,20 +153,52 @@
     <div class="container" style="text-align:center;">
         <h1>修行完了</h1>
         <div id="resultScore" style="font-size:24px; font-weight:900; color:var(--success); margin-bottom:15px;"></div>
-        <div class="label"><span>保存用データ</span><button class="sm-btn" onclick="copyText('numericalArea', this)">コピー</button></div>
+        
+        <div class="label"><span>今回間違えた単語</span><button class="sm-btn" onclick="copyText('wrongListArea', this)">コピー</button></div>
+        <textarea id="wrongListArea" style="height:80px; color:var(--danger);" readonly></textarea>
+
+        <div class="label" style="margin-top:10px;"><span>全進捗データ</span><button class="sm-btn" onclick="copyText('numericalArea', this)">コピー</button></div>
         <textarea id="numericalArea" readonly></textarea>
+        
         <button class="main-btn" onclick="location.reload()" style="margin-top:20px; background:var(--gray);">トップへ</button>
     </div>
 </div>
 
 <script>
 const WORDS = [];
-const mastery = {};
+let mastery = {};
 let queue = [];
 let results = [];
 let activeWord = null;
 let stressTimer = null;
 let enVoice = null;
+
+// 自動保存・読込処理
+window.onload = () => {
+    const savedMastery = localStorage.getItem('teppeki_mastery');
+    if (savedMastery) mastery = JSON.parse(savedMastery);
+    
+    const savedConfig = localStorage.getItem('teppeki_config');
+    if (savedConfig) {
+        const config = JSON.parse(savedConfig);
+        ['rangeStart', 'rangeEnd', 'rateEn', 'rateJa', 'limitTime'].forEach(key => {
+            if (config[key]) document.getElementById(key).value = config[key];
+        });
+    }
+    loadData();
+};
+
+function saveAll() {
+    localStorage.setItem('teppeki_mastery', JSON.stringify(mastery));
+    const config = {
+        rangeStart: document.getElementById('rangeStart').value,
+        rangeEnd: document.getElementById('rangeEnd').value,
+        rateEn: document.getElementById('rateEn').value,
+        rateJa: document.getElementById('rateJa').value,
+        limitTime: document.getElementById('limitTime').value
+    };
+    localStorage.setItem('teppeki_config', JSON.stringify(config));
+}
 
 window.speechSynthesis.onvoiceschanged = () => {
     const voices = window.speechSynthesis.getVoices();
@@ -174,6 +207,7 @@ window.speechSynthesis.onvoiceschanged = () => {
 
 function loadData() {
     const raw = document.getElementById('words-raw-data').textContent.trim();
+    const idMap = new Map();
     raw.split('\n').forEach(line => {
         const parts = line.split(',');
         if (parts.length < 2) return;
@@ -182,20 +216,32 @@ function loadData() {
         const m = jaFull.match(/^(.*?)(\d+)$/);
         if (m) {
             const id = parseInt(m[2]);
-            WORDS.push({ id, en, ja: m[1], raw: line });
+            // 重複排除ロジック: 既に同じIDがあれば上書き（かたほう除去）
+            idMap.set(id, { id, en, ja: m[1], raw: line });
         }
     });
+    WORDS.length = 0;
+    WORDS.push(...Array.from(idMap.values()));
 }
 
 function adj(id, delta) {
     const el = document.getElementById(id);
     el.value = Math.max(1, parseInt(el.value) + delta);
+    saveAll();
 }
 
 function adjF(id, delta) {
     const el = document.getElementById(id);
     let v = parseFloat(el.value) || 0;
     el.value = Math.max(0.1, Math.round((v + delta) * 10) / 10).toFixed(1);
+    saveAll();
+}
+
+function clearImport() {
+    document.getElementById('importArea').value = '';
+    mastery = {};
+    localStorage.removeItem('teppeki_mastery');
+    alert("進捗をリセットしました");
 }
 
 function getMasteryString() {
@@ -204,7 +250,6 @@ function getMasteryString() {
 
 function copyText(id, btn) {
     const el = document.getElementById(id);
-    el.select();
     navigator.clipboard.writeText(el.value).then(() => {
         const old = btn.textContent;
         btn.textContent = "完了";
@@ -214,21 +259,22 @@ function copyText(id, btn) {
 
 function exportData() {
     const s = getMasteryString();
-    if (!s) return alert("データがありません");
-    navigator.clipboard.writeText(s).then(() => alert("コピーしました"));
+    document.getElementById('importArea').value = s;
+    navigator.clipboard.writeText(s).then(() => alert("データを書き出しました"));
 }
 
 function quickCopy() {
+    saveAll();
     const s = getMasteryString();
     const btn = document.getElementById('midBtn');
     navigator.clipboard.writeText(s).then(() => {
-        btn.textContent = "完了";
-        setTimeout(() => btn.textContent = "進捗コピー", 1000);
+        btn.textContent = "保存完了";
+        setTimeout(() => btn.textContent = "進捗を一時保存", 1000);
     });
 }
 
 function startTraining() {
-    if (WORDS.length === 0) loadData();
+    saveAll();
     const imp = document.getElementById('importArea').value.trim();
     if (imp) {
         imp.split(',').forEach(t => {
@@ -248,7 +294,7 @@ function startTraining() {
     };
     available.sort((x, y) => priority(x.id) - priority(y.id) || Math.random() - 0.5);
     queue = available;
-    if (queue.length === 0) return alert("範囲外です");
+    if (queue.length === 0) return alert("対象がありません");
     results = [];
     document.getElementById("setup").classList.remove('active');
     document.getElementById("app").classList.add('active');
@@ -279,11 +325,8 @@ function speak(txt, lang, isEn) {
     ut.rate = parseFloat(document.getElementById(isEn ? 'rateEn' : 'rateJa').value) || 1.5;
     if (isEn && enVoice) ut.voice = enVoice;
     ut.onend = () => {
-        if (isEn) {
-            speak(activeWord.ja, 'ja-JP', false);
-        } else {
-            startStressTimer();
-        }
+        if (isEn) speak(activeWord.ja, 'ja-JP', false);
+        else startStressTimer();
     };
     window.speechSynthesis.speak(ut);
 }
@@ -302,12 +345,10 @@ function processAnswer(isOk) {
     clearTimeout(stressTimer);
     const id = activeWord.id;
     const prev = mastery[id];
-    if (isOk) {
-        mastery[id] = (prev === 'c') ? 'b' : 'a';
-    } else {
-        mastery[id] = 'c';
-    }
-    results.push({ id, ok: isOk });
+    if (isOk) mastery[id] = (prev === 'c') ? 'b' : 'a';
+    else mastery[id] = 'c';
+    results.push({ ...activeWord, ok: isOk });
+    saveAll();
     nextWord();
 }
 
@@ -316,7 +357,9 @@ function finishTraining() {
     document.getElementById("app").classList.remove('active');
     document.getElementById("report").classList.add('active');
     const ok = results.filter(r => r.ok).length;
+    const missed = results.filter(r => !r.ok);
     document.getElementById("resultScore").textContent = `${ok} / ${results.length} (${((ok/results.length)*100||0).toFixed(1)}%)`;
+    document.getElementById("wrongListArea").value = missed.map(m => m.raw).join('\n');
     document.getElementById("numericalArea").value = getMasteryString();
 }
 
@@ -328,6 +371,7 @@ document.onkeydown = (e) => {
     if (e.code === 'Space') { e.preventDefault(); finishTraining(); }
 };
 </script>
+
 
 <script type="text/plain" id="words-raw-data">
 vital,(～にとって)非常に重要な(to, for～) 生命の1
