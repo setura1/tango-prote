@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=5.0,user-scalable=yes,viewport-fit=cover">
-    <title>鉄壁修行 V9.0 究極管理版</title>
+    <title>鉄壁修行 V9.1 究極管理版</title>
     <style>
         :root {
             --bg: #070b14;
@@ -15,60 +15,64 @@
             --gray: #4b5563;
             --accent: #7c3aed;
         }
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
         html, body { 
             margin: 0; width: 100%; height: 100%; background: var(--bg); 
-            font-family: 'Inter', sans-serif; color: var(--text); 
+            font-family: 'Inter', system-ui, sans-serif; color: var(--text); 
             overflow-x: hidden; touch-action: manipulation;
         }
         
         #setup, #report { padding: 15px; min-height: 100vh; overflow-y: auto; display: none; }
         #setup.active, #report.active { display: block; }
-        #app { display: none; position: fixed; inset: 0; background: var(--bg); flex-direction: column; padding: 15px; z-index: 100; }
+        #app { display: none; position: fixed; inset: 0; background: var(--bg); flex-direction: column; padding: 10px; z-index: 100; }
         #app.active { display: flex; }
 
-        .container { max-width: 600px; margin: 0 auto; background: var(--container); border-radius: 24px; padding: 20px; border: 1px solid #1f2937; }
-        h1 { font-size: 18px; text-align: center; margin-bottom: 15px; color: var(--primary); font-weight: 900; }
+        .container { max-width: 600px; margin: 0 auto; background: var(--container); border-radius: 20px; padding: 16px; border: 1px solid #1f2937; }
+        h1 { font-size: 18px; text-align: center; margin: 0 0 15px 0; color: var(--primary); font-weight: 900; }
         
         .label { font-size: 10px; font-weight: bold; color: var(--gray); margin: 10px 0 4px 4px; display: flex; justify-content: space-between; align-items: center; }
         
+        /* レイアウト崩れ防止用グリッド */
         .param-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
-        @media (max-width: 480px) { .param-grid { grid-template-columns: 1fr; } }
+        @media (max-width: 400px) { .param-grid { grid-template-columns: 1fr; } }
 
-        .input-group { background: #1f2937; padding: 6px 10px; border-radius: 12px; border: 1px solid #374151; }
-        .input-group span { font-size: 9px; display: block; margin-bottom: 2px; color: #9ca3af; }
+        .input-group { background: #1f2937; padding: 8px; border-radius: 12px; border: 1px solid #374151; display: flex; flex-direction: column; }
+        .input-group span { font-size: 9px; margin-bottom: 4px; color: #9ca3af; }
         
-        .adj-container { display: flex; align-items: center; gap: 6px; }
-        .adj-btn { background: #374151; color: white; border: none; padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: bold; cursor: pointer; }
-        .adj-btn:active { background: var(--primary); transform: scale(0.9); }
+        .adj-container { display: flex; align-items: center; justify-content: center; gap: 4px; }
+        .adj-btn { background: #374151; color: white; border: none; padding: 6px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer; min-width: 32px; }
+        .adj-btn:active { background: var(--primary); }
 
         input { 
-            flex: 1; min-width: 40px; background: transparent; border: none; color: white; 
-            font-size: 16px; font-weight: bold; outline: none; text-align: center;
+            width: 50px; background: transparent; border: none; color: white; 
+            font-size: 16px; font-weight: bold; text-align: center;
         }
+        /* スピナー非表示 */
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 
         .range-box { background: #1e1b4b; padding: 10px; border-radius: 16px; border: 1px solid var(--accent); margin-bottom: 12px; }
-        textarea { width: 100%; height: 50px; background: rgba(0,0,0,0.4); color: #94a3b8; border: 1px solid #374151; border-radius: 12px; padding: 8px; font-size: 11px; margin-top: 4px; outline: none; resize: none; word-break: break-all; }
+        textarea { width: 100%; height: 50px; background: rgba(0,0,0,0.4); color: #94a3b8; border: 1px solid #374151; border-radius: 10px; padding: 8px; font-size: 11px; margin-top: 4px; outline: none; resize: none; word-break: break-all; }
 
-        button.main-btn { width: 100%; height: 54px; border: none; border-radius: 16px; font-size: 18px; font-weight: 900; cursor: pointer; background: var(--primary); color: white; transition: 0.2s; box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3); }
+        button.main-btn { width: 100%; height: 54px; border: none; border-radius: 16px; font-size: 18px; font-weight: 900; cursor: pointer; background: var(--primary); color: white; box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3); }
         button.main-btn:active { transform: scale(0.98); }
 
         .sm-btn { background: var(--gray); color: white; border: none; padding: 4px 10px; border-radius: 6px; font-size: 9px; cursor: pointer; font-weight: bold; }
-        .io-btn { background: var(--accent); color: white; border: none; padding: 4px 10px; border-radius: 6px; font-size: 9px; font-weight: bold; cursor: pointer; margin-left: 4px; }
+        .io-btn { background: var(--accent); color: white; border: none; padding: 4px 10px; border-radius: 6px; font-size: 9px; font-weight: bold; cursor: pointer; }
         
         #card { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 10px; gap: 10px; }
-        #englishWord { font-size: 32px; font-weight: 900; line-height: 1.2; color: var(--text); word-break: break-word; max-width: 95%; }
-        #japaneseWord { font-size: 20px; color: #9ca3af; font-weight: bold; line-height: 1.4; max-width: 95%; }
+        #englishWord { font-size: 36px; font-weight: 900; line-height: 1.1; color: var(--text); word-break: break-word; max-width: 95%; }
+        #japaneseWord { font-size: 20px; color: var(--primary); font-weight: bold; opacity: 0; min-height: 1.2em; }
+        #japaneseWord.visible { opacity: 1; }
         
         #timerTrack { width: 100%; height: 6px; background: #1f2937; margin-top: 15px; border-radius: 3px; overflow: hidden; opacity: 0; }
         #timerTrack.active { opacity: 1; }
         #timerBar { height: 100%; background: var(--danger); width: 0%; }
 
-        .progress-container { width: 100%; height: 4px; background: #1f2937; border-radius: 2px; overflow: hidden; margin: 6px 0; }
+        .progress-container { width: 100%; height: 4px; background: #1f2937; border-radius: 2px; overflow: hidden; margin: 4px 0; }
         #progressBar { height: 100%; background: var(--primary); width: 0%; transition: width 0.3s; }
         
         .ans-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; width: 100%; margin-bottom: 10px; }
-        .ans-btn { height: 70px; border: none; border-radius: 20px; color: white; font-size: 20px; font-weight: bold; cursor: pointer; }
+        .ans-btn { height: 74px; border: none; border-radius: 20px; color: white; font-size: 22px; font-weight: 900; cursor: pointer; }
         #correctBtn { background: var(--success); }
         #wrongBtn { background: var(--danger); }
     </style>
@@ -77,28 +81,27 @@
 
 <div id="setup" class="active">
     <div class="container">
-        <h1>鉄壁修行 V9.0</h1>
+        <h1>鉄壁修行 V9.1</h1>
         
         <div class="input-group" style="margin-bottom:12px; background: #1e1b4b;">
             <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom:4px;">
-                <span>手動インポート/書き出し</span>
-                <div>
+                <span style="color:#fff">進捗復元 / 書き出し</span>
+                <div style="display:flex; gap:4px;">
                     <button class="io-btn" onclick="exportData()">出す</button>
-                    <button class="io-btn" style="background:var(--gray);" onclick="clearImport()">消去</button>
+                    <button class="io-btn" style="background:var(--gray);" onclick="clearImport()">消す</button>
                 </div>
             </div>
             <textarea id="importArea" placeholder="データを貼り付けて上書き復元"></textarea>
-            <div style="font-size:9px; color:var(--success); margin-top:5px; text-align:right;">※ブラウザに自動保存されています</div>
         </div>
 
         <div class="range-box">
-            <div class="label">範囲と個数</div>
+            <div class="label">範囲指定</div>
             <div class="param-grid">
                 <div class="input-group">
                     <span>開始ID</span>
                     <div class="adj-container">
                         <button class="adj-btn" onclick="adj('rangeStart', -100)">-</button>
-                        <input type="number" id="rangeStart" value="1">
+                        <input type="number" id="rangeStart" value="1" inputmode="numeric">
                         <button class="adj-btn" onclick="adj('rangeStart', 100)">+</button>
                     </div>
                 </div>
@@ -106,22 +109,28 @@
                     <span>終了ID</span>
                     <div class="adj-container">
                         <button class="adj-btn" onclick="adj('rangeEnd', -100)">-</button>
-                        <input type="number" id="rangeEnd" value="2176">
+                        <input type="number" id="rangeEnd" value="2176" inputmode="numeric">
                         <button class="adj-btn" onclick="adj('rangeEnd', 100)">+</button>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="label">修行テンポ設定</div>
+        <div class="label">修行テンポ調整</div>
         <div class="param-grid">
-            <div class="input-group"><span>英語速度</span><input type="number" id="rateEn" value="1.5" step="0.1"></div>
-            <div class="input-group"><span>日本語速度</span><input type="number" id="rateJa" value="1.5" step="0.1"></div>
+            <div class="input-group">
+                <span>英語速度</span>
+                <input type="number" id="rateEn" value="1.5" step="0.1" style="width:100%" inputmode="decimal">
+            </div>
+            <div class="input-group">
+                <span>日本語速度</span>
+                <input type="number" id="rateJa" value="1.5" step="0.1" style="width:100%" inputmode="decimal">
+            </div>
             <div class="input-group">
                 <span>解答猶予（秒）</span>
                 <div class="adj-container">
                     <button class="adj-btn" onclick="adjF('limitTime', -0.1)">-</button>
-                    <input type="number" id="limitTime" value="1.0" step="0.1">
+                    <input type="number" id="limitTime" value="1.0" step="0.1" inputmode="decimal">
                     <button class="adj-btn" onclick="adjF('limitTime', 0.1)">+</button>
                 </div>
             </div>
@@ -141,11 +150,11 @@
     </div>
     <div class="ans-btns">
         <button id="wrongBtn" class="ans-btn" onclick="processAnswer(false)">苦手 (A)</button>
-        <button id="correctBtn" class="ans-btn" onclick="processAnswer(true)">正解 (Z)</button>
+        <button id="correctBtn" class="ans-btn" onclick="processAnswer(true)">わかる (Z)</button>
     </div>
-    <div style="display:flex; justify-content: space-between; align-items:center; padding-bottom: 10px;">
+    <div style="display:flex; justify-content: space-between; padding-bottom: 10px;">
         <button onclick="finishTraining()" style="background:none; border:none; color:var(--gray); font-size:11px;">中断 (Space)</button>
-        <button onclick="quickCopy()" id="midBtn" class="sm-btn">進捗を一時保存</button>
+        <button onclick="quickCopy()" id="midBtn" class="sm-btn">進捗保存コピー</button>
     </div>
 </div>
 
@@ -154,10 +163,10 @@
         <h1>修行完了</h1>
         <div id="resultScore" style="font-size:24px; font-weight:900; color:var(--success); margin-bottom:15px;"></div>
         
-        <div class="label"><span>今回間違えた単語</span><button class="sm-btn" onclick="copyText('wrongListArea', this)">コピー</button></div>
-        <textarea id="wrongListArea" style="height:80px; color:var(--danger);" readonly></textarea>
+        <div class="label"><span>今日間違えた単語</span><button class="sm-btn" onclick="copyText('wrongListArea', this)">コピー</button></div>
+        <textarea id="wrongListArea" style="height:100px; color:var(--danger);" readonly></textarea>
 
-        <div class="label" style="margin-top:10px;"><span>全進捗データ</span><button class="sm-btn" onclick="copyText('numericalArea', this)">コピー</button></div>
+        <div class="label" style="margin-top:10px;"><span>保存用数値データ</span><button class="sm-btn" onclick="copyText('numericalArea', this)">コピー</button></div>
         <textarea id="numericalArea" readonly></textarea>
         
         <button class="main-btn" onclick="location.reload()" style="margin-top:20px; background:var(--gray);">トップへ</button>
@@ -173,16 +182,16 @@ let activeWord = null;
 let stressTimer = null;
 let enVoice = null;
 
-// 自動保存・読込処理
 window.onload = () => {
-    const savedMastery = localStorage.getItem('teppeki_mastery');
-    if (savedMastery) mastery = JSON.parse(savedMastery);
+    // データ復元
+    const savedM = localStorage.getItem('teppeki_mastery');
+    if (savedM) mastery = JSON.parse(savedM);
     
-    const savedConfig = localStorage.getItem('teppeki_config');
-    if (savedConfig) {
-        const config = JSON.parse(savedConfig);
-        ['rangeStart', 'rangeEnd', 'rateEn', 'rateJa', 'limitTime'].forEach(key => {
-            if (config[key]) document.getElementById(key).value = config[key];
+    const savedC = localStorage.getItem('teppeki_config');
+    if (savedC) {
+        const c = JSON.parse(savedC);
+        ['rangeStart', 'rangeEnd', 'rateEn', 'rateJa', 'limitTime'].forEach(k => {
+            if (c[k]) document.getElementById(k).value = c[k];
         });
     }
     loadData();
@@ -216,7 +225,7 @@ function loadData() {
         const m = jaFull.match(/^(.*?)(\d+)$/);
         if (m) {
             const id = parseInt(m[2]);
-            // 重複排除ロジック: 既に同じIDがあれば上書き（かたほう除去）
+            // 重複排除: 新しい行のデータを優先
             idMap.set(id, { id, en, ja: m[1], raw: line });
         }
     });
@@ -238,10 +247,10 @@ function adjF(id, delta) {
 }
 
 function clearImport() {
+    if(!confirm("進捗データを消去しますか？")) return;
     document.getElementById('importArea').value = '';
     mastery = {};
     localStorage.removeItem('teppeki_mastery');
-    alert("進捗をリセットしました");
 }
 
 function getMasteryString() {
@@ -260,21 +269,25 @@ function copyText(id, btn) {
 function exportData() {
     const s = getMasteryString();
     document.getElementById('importArea').value = s;
-    navigator.clipboard.writeText(s).then(() => alert("データを書き出しました"));
+    navigator.clipboard.writeText(s).then(() => alert("コピーしました"));
 }
 
 function quickCopy() {
     saveAll();
     const s = getMasteryString();
-    const btn = document.getElementById('midBtn');
     navigator.clipboard.writeText(s).then(() => {
-        btn.textContent = "保存完了";
-        setTimeout(() => btn.textContent = "進捗を一時保存", 1000);
+        const b = document.getElementById('midBtn');
+        const old = b.textContent;
+        b.textContent = "保存完了";
+        setTimeout(() => b.textContent = old, 1000);
     });
 }
 
 function startTraining() {
+    if (WORDS.length === 0) loadData();
     saveAll();
+    
+    // インポート処理
     const imp = document.getElementById('importArea').value.trim();
     if (imp) {
         imp.split(',').forEach(t => {
@@ -282,9 +295,12 @@ function startTraining() {
             if (m) mastery[parseInt(m[1])] = m[2];
         });
     }
+
     const start = parseInt(document.getElementById('rangeStart').value);
     const end = parseInt(document.getElementById('rangeEnd').value);
     let available = WORDS.filter(w => w.id >= start && w.id <= end);
+    
+    // 優先度 c > NEW > b > a
     const priority = (id) => {
         const s = mastery[id];
         if (s === 'c') return 1;
@@ -293,8 +309,10 @@ function startTraining() {
         return 3;
     };
     available.sort((x, y) => priority(x.id) - priority(y.id) || Math.random() - 0.5);
+    
     queue = available;
-    if (queue.length === 0) return alert("対象がありません");
+    if (queue.length === 0) return alert("範囲内にデータがありません");
+    
     results = [];
     document.getElementById("setup").classList.remove('active');
     document.getElementById("app").classList.add('active');
@@ -308,13 +326,18 @@ function nextWord() {
     track.classList.remove('active');
     bar.style.transition = "none";
     bar.style.width = "0%";
+    
     if (queue.length === 0) return finishTraining();
     activeWord = queue.shift();
+    
     const total = results.length + queue.length + 1;
     document.getElementById("infoText").textContent = `ID:${activeWord.id} [${mastery[activeWord.id] || 'NEW'}] | ${results.length+1}/${total}`;
     document.getElementById("progressBar").style.width = `${(results.length / total) * 100}%`;
+    
     document.getElementById("englishWord").textContent = activeWord.en;
     document.getElementById("japaneseWord").textContent = activeWord.ja;
+    document.getElementById("japaneseWord").classList.remove('visible');
+    
     speak(activeWord.en, 'en-US', true);
 }
 
@@ -324,9 +347,14 @@ function speak(txt, lang, isEn) {
     ut.lang = lang;
     ut.rate = parseFloat(document.getElementById(isEn ? 'rateEn' : 'rateJa').value) || 1.5;
     if (isEn && enVoice) ut.voice = enVoice;
+    
     ut.onend = () => {
-        if (isEn) speak(activeWord.ja, 'ja-JP', false);
-        else startStressTimer();
+        if (isEn) {
+            document.getElementById("japaneseWord").classList.add('visible');
+            speak(activeWord.ja, 'ja-JP', false);
+        } else {
+            startStressTimer();
+        }
     };
     window.speechSynthesis.speak(ut);
 }
@@ -347,6 +375,7 @@ function processAnswer(isOk) {
     const prev = mastery[id];
     if (isOk) mastery[id] = (prev === 'c') ? 'b' : 'a';
     else mastery[id] = 'c';
+    
     results.push({ ...activeWord, ok: isOk });
     saveAll();
     nextWord();
@@ -356,9 +385,11 @@ function finishTraining() {
     window.speechSynthesis.cancel();
     document.getElementById("app").classList.remove('active');
     document.getElementById("report").classList.add('active');
-    const ok = results.filter(r => r.ok).length;
+    
+    const okCount = results.filter(r => r.ok).length;
     const missed = results.filter(r => !r.ok);
-    document.getElementById("resultScore").textContent = `${ok} / ${results.length} (${((ok/results.length)*100||0).toFixed(1)}%)`;
+    document.getElementById("resultScore").textContent = `${okCount} / ${results.length} (${((okCount/results.length)*100||0).toFixed(1)}%)`;
+    
     document.getElementById("wrongListArea").value = missed.map(m => m.raw).join('\n');
     document.getElementById("numericalArea").value = getMasteryString();
 }
