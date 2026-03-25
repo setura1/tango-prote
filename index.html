@@ -52,6 +52,11 @@
         .num-ctrl { display: flex; align-items: center; gap: 5px; }
         .step { width: 45px; height: 45px; background: #e2e8f0; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; color: #1e293b; }
 
+        /* 読み上げ速度調整用 */
+        .slider-container { margin: 15px 0; background: rgba(0,0,0,0.02); padding: 15px; border-radius: 14px; border: 1.5px solid #e2e8f0; }
+        .slider-label { display: flex; justify-content: space-between; font-size: 13px; font-weight: 800; color: var(--gray); margin-bottom: 8px; }
+        input[type="range"] { padding: 0; height: 8px; cursor: pointer; }
+
         button.main-btn { width: 100%; height: 58px; border: none; border-radius: 18px; font-size: 18px; font-weight: 800; cursor: pointer; transition: transform 0.1s; margin-top: 20px; }
         button.main-btn:active { transform: scale(0.96); }
         #startBtn { background: var(--primary); color: white; }
@@ -110,6 +115,14 @@
                     <button class="step" onclick="changeNum('rangeEnd', 100)">+</button>
                 </div>
             </div>
+        </div>
+
+        <div class="slider-container">
+            <div class="slider-label">
+                <span>読み上げ速度</span>
+                <span id="speedValue">1.4</span>
+            </div>
+            <input type="range" id="speechRate" min="0.5" max="2.5" step="0.1" value="1.4" oninput="updateSpeedLabel(this.value)">
         </div>
 
         <button id="startBtn" class="main-btn" onclick="initTraining()">修行開始</button>
@@ -186,7 +199,7 @@ obvious,明白な40
 evident,明白な41
 apparent,見たところの 明白な42
 respect,尊敬 尊重 点 事項 ～を尊敬する 尊重する43
-aspect,側面 様相 点44
+aspect,側面 様様 点44
 detail,詳細45
 precise,正確な46
 accurate,正確な47
@@ -242,7 +255,7 @@ incline,～を傾ける 気持ちにさせる96
 lean,(～に)寄りかかる もたれる97
 erect,～を直立させる 建てる 直立した98
 emit,～を放出する 排出する99
-absorb,～を吸収する100
+absorb,～を吸収する 100
 attract,～を引き付ける 魅了する101
 extract,～を抜き出す 抽出する102
 aim,目標 目的 狙う 目標とする103
@@ -931,7 +944,7 @@ defend,守る 弁護する785
 motive,動機786
 witness,証人 目撃する787
 arrest,逮捕する788
-detain,拘留する789
+detain,拘留する端子789
 accuse,非難する790
 blame,責任を負わせる791
 fault,過失792
@@ -1956,7 +1969,7 @@ luxury,贅沢、贅沢品1810
 charity,慈悲、慈善1811
 athlete,運動選手1812
 laundry,洗濯物1813
-label,～に(…という)レッテルを貼る(as)1814
+label,～に(…という)レッレッテルを貼る(as)1814
 loose,ゆるんだ、だらしない1815
 humor,ユーア； 機謙1816
 image,イメージ、画像、映像1817
@@ -2327,9 +2340,25 @@ let currentQueue = [], trainingResults = [], activeWord = null, trainingTimer = 
 // --- [初期化処理] ---
 window.onload = () => {
     const saved = localStorage.getItem("teppeki_full_state");
-    area.value = saved ? JSON.parse(saved).list : FULL_DATA;
+    if(saved) {
+        const data = JSON.parse(saved);
+        area.value = data.list || FULL_DATA;
+        document.getElementById("rangeStart").value = data.s || 1;
+        document.getElementById("rangeEnd").value = data.e || 2176;
+        if(data.rate) {
+            document.getElementById("speechRate").value = data.rate;
+            document.getElementById("speedValue").textContent = data.rate;
+        }
+    } else {
+        area.value = FULL_DATA;
+    }
     updateCounterAndNav();
 };
+
+function updateSpeedLabel(val) {
+    document.getElementById("speedValue").textContent = val;
+    saveCurrentState();
+}
 
 function updateCounterAndNav() {
     const lines = area.value.trim().split("\n").filter(l => l.includes(","));
@@ -2358,7 +2387,8 @@ function saveCurrentState() {
     localStorage.setItem("teppeki_full_state", JSON.stringify({
         list: area.value,
         s: document.getElementById("rangeStart").value,
-        e: document.getElementById("rangeEnd").value
+        e: document.getElementById("rangeEnd").value,
+        rate: document.getElementById("speechRate").value
     }));
 }
 
@@ -2450,7 +2480,9 @@ function finishTraining() {
 function speak(text, lang) {
     return new Promise(resolve => {
         const u = new SpeechSynthesisUtterance(text);
-        u.lang = lang; u.rate = 1.4;
+        u.lang = lang; 
+        // 読み上げ速度をスライダーの値から取得
+        u.rate = parseFloat(document.getElementById("speechRate").value);
         u.onend = resolve;
         speechSynthesis.speak(u);
     });
