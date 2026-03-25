@@ -3,162 +3,314 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
-    <title>単語鉄壁修行 2176 極限管理版</title>
+    <title>鉄壁修行 V6.0 完全管理版</title>
     <style>
         :root {
-            --bg: #0f172a;
-            --container: #1e293b;
-            --text: #f1f5f9;
-            --primary: #3b82f6;
-            --success: #10b981;
-            --danger: #ef4444;
-            --gray: #64748b;
-            --accent: #8b5cf6;
+            --bg: #070b14;
+            --container: #111827;
+            --text: #f9fafb;
+            --primary: #2563eb;
+            --success: #059669;
+            --danger: #dc2626;
+            --gray: #4b5563;
+            --accent: #7c3aed;
         }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        html, body { margin: 0; width: 100%; height: 100%; background: var(--bg); font-family: 'Helvetica Neue', Arial, sans-serif; color: var(--text); }
+        html, body { margin: 0; width: 100%; height: 100%; background: var(--bg); font-family: sans-serif; color: var(--text); overflow: hidden; }
         
-        #setup, #report { padding: 20px; min-height: 100vh; overflow-y: auto; }
-        #setup { display: block; }
-        #report, #app { display: none; }
+        #setup, #report { padding: 15px; height: 100vh; overflow-y: auto; display: none; }
+        #setup.active, #report.active { display: block; }
+        #app { display: none; position: fixed; inset: 0; background: var(--bg); flex-direction: column; padding: 15px; z-index: 100; }
+        #app.active { display: flex; }
 
-        .container { max-width: 650px; margin: 0 auto; background: var(--container); border-radius: 28px; padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .container { max-width: 600px; margin: 0 auto; background: var(--container); border-radius: 24px; padding: 20px; border: 1px solid #1f2937; }
+        h1 { font-size: 18px; text-align: center; margin-bottom: 15px; color: var(--primary); font-weight: 900; }
         
-        h1 { font-size: 20px; text-align: center; margin-bottom: 20px; font-weight: 900; }
-        .label { font-size: 13px; font-weight: 800; color: var(--gray); margin: 15px 0 6px 4px; }
+        .label { font-size: 11px; font-weight: bold; color: var(--gray); margin: 12px 0 4px 4px; display: flex; justify-content: space-between; align-items: center; }
         
-        .param-group { background: rgba(0,0,0,0.2); padding: 12px; border-radius: 16px; margin-bottom: 10px; border: 1px solid #334155; }
-        .param-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; }
-        .param-title { font-size: 12px; font-weight: 800; color: var(--text); }
+        .param-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+        @media (max-width: 480px) { .param-grid { grid-template-columns: 1fr; } }
+
+        .input-group { background: #1f2937; padding: 8px; border-radius: 12px; border: 1px solid #374151; }
+        .input-group span { font-size: 9px; display: block; margin-bottom: 4px; color: #9ca3af; }
         
-        .ctrl-btns { display: flex; align-items: center; gap: 8px; }
-        .val-display { min-width: 50px; text-align: center; font-family: monospace; font-weight: 900; font-size: 16px; color: var(--primary); }
-        
-        .step-btn { width: 36px; height: 36px; background: #334155; border: none; border-radius: 10px; color: white; font-weight: 900; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .adj-container { display: flex; align-items: center; gap: 6px; }
+        .step-btn { background: #374151; color: white; border: none; padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: bold; cursor: pointer; }
         .step-btn:active { background: var(--primary); }
 
-        .section-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 10px; margin-bottom: 20px; }
-        .nav-item { font-size: 11px; padding: 8px 0; background: var(--gray); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        input { flex: 1; min-width: 40px; background: transparent; border: none; color: white; font-size: 16px; font-weight: bold; outline: none; text-align: center; }
 
-        button.main-btn { width: 100%; height: 58px; border: none; border-radius: 18px; font-size: 20px; font-weight: 900; cursor: pointer; margin-top: 20px; background: var(--primary); color: white; box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4); }
+        textarea { width: 100%; height: 60px; background: rgba(0,0,0,0.4); color: #94a3b8; border: 1px solid #374151; border-radius: 12px; padding: 10px; font-size: 11px; margin-top: 5px; outline: none; resize: none; word-break: break-all; }
+
+        button.main-btn { width: 100%; height: 54px; border: none; border-radius: 16px; font-size: 18px; font-weight: 900; cursor: pointer; background: var(--primary); color: white; transition: 0.2s; box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3); }
+        button.main-btn:active { transform: scale(0.98); }
+
+        .copy-btn { background: var(--gray); color: white; border: none; padding: 4px 10px; border-radius: 6px; font-size: 9px; cursor: pointer; font-weight: bold; }
         
-        #app { position: fixed; inset: 0; background: var(--bg); flex-direction: column; padding: 20px; z-index: 100; }
-        #card { flex: 1; background: var(--container); border-radius: 40px; margin: 20px 0; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; padding: 30px; text-align: center; border: 2px solid #334155; }
-        #englishWord { font-size: 48px; font-weight: 900; letter-spacing: -1px; }
-        #japaneseWord { font-size: 28px; margin-top: 25px; color: var(--primary); font-weight: 700; min-height: 1.2em; }
+        #card { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; text-align: center; gap: 10px; }
+        #englishWord { font-size: 44px; font-weight: 900; letter-spacing: -1px; line-height: 1.1; word-break: break-all; color: var(--text); }
+        #japaneseWord { font-size: 22px; color: var(--primary); font-weight: bold; opacity: 0; min-height: 1.5em; }
+        #japaneseWord.visible { opacity: 1; }
         
-        .progress-container { width: 100%; height: 10px; background: #334155; border-radius: 5px; overflow: hidden; }
-        #progressBar { height: 100%; background: var(--primary); width: 0%; transition: width 0.2s; }
+        #gauge { position: absolute; bottom: 0; left: 0; height: 4px; background: var(--danger); width: 0%; }
+
+        .progress-container { width: 100%; height: 4px; background: #1f2937; border-radius: 2px; overflow: hidden; margin: 8px 0; }
+        #progressBar { height: 100%; background: var(--primary); width: 0%; transition: width 0.3s linear; }
         
-        .ans-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; width: 100%; }
-        .ans-btn { height: 74px; border: none; border-radius: 24px; color: white; font-size: 22px; font-weight: 900; cursor: pointer; transition: transform 0.1s; }
-        .ans-btn:active { transform: scale(0.95); }
+        .ans-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; width: 100%; margin-bottom: 10px; }
+        .ans-btn { height: 70px; border: none; border-radius: 20px; color: white; font-size: 20px; font-weight: bold; cursor: pointer; }
         #correctBtn { background: var(--success); }
         #wrongBtn { background: var(--danger); }
-        
-        #gaugeContainer { position: absolute; bottom: 0; left: 0; width: 100%; height: 8px; background: rgba(255,255,255,0.05); }
-        #gauge { height: 100%; background: var(--danger); width: 0%; }
-
-        .time-label { font-size: 14px; color: var(--gray); margin-top: 5px; font-weight: bold; }
-        textarea#missedArea { width: 100%; height: 180px; background: rgba(0,0,0,0.3); color: #94a3b8; border: 1px solid #334155; border-radius: 14px; padding: 12px; font-family: monospace; font-size: 12px; margin-top: 15px; }
-        
-        .copy-btn { width: 100%; height: 50px; border: none; border-radius: 14px; font-size: 16px; font-weight: 800; cursor: pointer; margin-top: 15px; background: var(--accent); color: white; transition: background 0.2s; }
     </style>
 </head>
 <body>
 
-<div id="setup">
+<div id="setup" class="active">
     <div class="container">
-        <h1>単語鉄壁修行 2176 管理版</h1>
-        
-        <div class="label">修行範囲設定</div>
-        <div class="param-group">
-            <div class="param-row">
-                <span class="param-title">開始番号</span>
-                <div class="ctrl-btns">
-                    <button class="step-btn" onclick="changeVal('rangeStart', -100)">--</button>
-                    <button class="step-btn" onclick="changeVal('rangeStart', -1)">-</button>
-                    <div id="disp_rangeStart" class="val-display">1</div>
-                    <button class="step-btn" onclick="changeVal('rangeStart', 1)">+</button>
-                    <button class="step-btn" onclick="changeVal('rangeStart', 100)">++</button>
+        <h1>鉄壁修行 V6.0 極限管理</h1>
+        <div class="input-group" style="margin-bottom:15px; background: #1e1b4b; border-color: var(--accent);">
+            <span>進捗復元 (例: 1c,2a,3b)</span>
+            <textarea id="importArea" placeholder="ここに前回の「保存用データ」を貼り付け"></textarea>
+        </div>
+
+        <div class="label">修行範囲</div>
+        <div class="param-grid">
+            <div class="input-group">
+                <span>開始ID</span>
+                <div class="adj-container">
+                    <button class="step-btn" onclick="adj('rangeStart',-100)">--</button>
+                    <input type="number" id="rangeStart" value="1">
+                    <button class="step-btn" onclick="adj('rangeStart',100)">++</button>
                 </div>
             </div>
-            <div class="param-row">
-                <span class="param-title">終了番号</span>
-                <div class="ctrl-btns">
-                    <button class="step-btn" onclick="changeVal('rangeEnd', -100)">--</button>
-                    <button class="step-btn" onclick="changeVal('rangeEnd', -1)">-</button>
-                    <div id="disp_rangeEnd" class="val-display">2176</div>
-                    <button class="step-btn" onclick="changeVal('rangeEnd', 1)">+</button>
-                    <button class="step-btn" onclick="changeVal('rangeEnd', 100)">++</button>
+            <div class="input-group">
+                <span>終了ID</span>
+                <div class="adj-container">
+                    <button class="step-btn" onclick="adj('rangeEnd',-100)">--</button>
+                    <input type="number" id="rangeEnd" value="2176">
+                    <button class="step-btn" onclick="adj('rangeEnd',100)">++</button>
                 </div>
             </div>
         </div>
 
-        <div class="label">速度・時間管理</div>
-        <div class="param-group">
-            <div class="param-row">
-                <span class="param-title">読み上げ速度</span>
-                <div class="ctrl-btns">
-                    <button class="step-btn" onclick="changeVal('speechRate', -0.1)">-</button>
-                    <div id="disp_speechRate" class="val-display">1.6</div>
-                    <button class="step-btn" onclick="changeVal('speechRate', 0.1)">+</button>
-                </div>
+        <div class="label">テンポ調整</div>
+        <div class="param-grid">
+            <div class="input-group">
+                <span>想起待ち(秒)</span>
+                <input type="number" id="engTime" value="1.0" step="0.1">
             </div>
-            <div class="param-row">
-                <span class="param-title">英語表示(秒)</span>
-                <div class="ctrl-btns">
-                    <button class="step-btn" onclick="changeVal('engTime', -0.1)">-</button>
-                    <div id="disp_engTime" class="val-display">1.0</div>
-                    <button class="step-btn" onclick="changeVal('engTime', 0.1)">+</button>
-                </div>
-            </div>
-            <div class="param-row">
-                <span class="param-title">解答制限(秒)</span>
-                <div class="ctrl-btns">
-                    <button class="step-btn" onclick="changeVal('japTime', -0.1)">-</button>
-                    <div id="disp_japTime" class="val-display">1.0</div>
-                    <button class="step-btn" onclick="changeVal('japTime', 0.1)">+</button>
-                </div>
+            <div class="input-group">
+                <span>解答期限(秒)</span>
+                <input type="number" id="japTime" value="1.0" step="0.1">
             </div>
         </div>
 
-        <div class="label">クイック選択</div>
-        <div id="sectionContainer" class="section-grid"></div>
-
-        <button id="startBtn" class="main-btn" onclick="initTraining()">修行開始</button>
+        <button class="main-btn" onclick="startTraining()">修行開始</button>
     </div>
 </div>
 
 <div id="app">
-    <div id="infoText" style="text-align:center; font-weight:bold; margin-bottom:10px; color:var(--gray);"></div>
+    <div id="infoText" style="text-align:center; font-size:11px; color:var(--gray); margin-bottom:4px;"></div>
     <div class="progress-container"><div id="progressBar"></div></div>
     
     <div id="card">
         <div id="englishWord"></div>
         <div id="japaneseWord"></div>
-        <div id="gaugeContainer"><div id="gauge"></div></div>
+        <div id="gauge"></div>
     </div>
 
     <div class="ans-btns">
         <button id="wrongBtn" class="ans-btn" onclick="processAnswer(false)">苦手 (A)</button>
-        <button id="correctBtn" class="ans-btn" onclick="processAnswer(true)">わかる (Z)</button>
+        <button id="correctBtn" class="ans-btn" onclick="processAnswer(true)">正解 (Z)</button>
+    </div>
+    <div style="display:flex; justify-content: space-between; align-items:center; padding: 5px;">
+        <button onclick="finishTraining()" style="background:none; border:none; color:var(--gray); font-size:11px; cursor:pointer;">中断終了</button>
+        <button onclick="quickCopy()" id="midCopyBtn" style="background:var(--gray); border:none; color:white; font-size:10px; padding:6px 12px; border-radius:8px; cursor:pointer;">進捗をコピー</button>
     </div>
 </div>
 
 <div id="report">
     <div class="container" style="text-align:center;">
         <h1>修行完了</h1>
-        <div id="resultScore" style="font-size:24px; font-weight:900; margin-top:10px; color:var(--success);"></div>
-        <div id="resultTime" class="time-label"></div>
-        <button class="copy-btn" onclick="copyResults()">結果をクリップボードにコピー</button>
-        <textarea id="missedArea" readonly></textarea>
-        <button class="main-btn" onclick="location.reload()">トップに戻る</button>
+        <div id="resultScore" style="font-size:22px; font-weight:900; color:var(--success); margin-bottom:15px;"></div>
+        
+        <div class="label">
+            <span>保存用データ (次回これを貼り付け)</span>
+            <button class="copy-btn" onclick="copyText('numericalArea', this)">コピー</button>
+        </div>
+        <textarea id="numericalArea" readonly></textarea>
+
+        <button class="main-btn" onclick="location.reload()" style="margin-top:20px; background:var(--gray);">トップへ</button>
     </div>
 </div>
 
 <script>
-const FULL_DATA = `vital,(～にとって)非常に重要な(to, for～) 生命の1
+const WORDS = [];
+const mastery = {}; // { id: 'a' | 'b' | 'c' }
+let queue = [];
+let results = [];
+let activeWord = null;
+let timers = { eng: null, jap: null };
+
+function loadData() {
+    const raw = document.getElementById('words-raw-data').textContent.trim();
+    raw.split('\n').forEach(line => {
+        const parts = line.split(',');
+        if (parts.length < 2) return;
+        const en = parts[0].trim();
+        const jaFull = parts[1].trim();
+        const m = jaFull.match(/^(.*?)(\d+)$/);
+        if (m) {
+            const id = parseInt(m[2]);
+            WORDS.push({ id, en, ja: m[1], raw: line });
+        }
+    });
+}
+
+function adj(id, delta) {
+    const el = document.getElementById(id);
+    el.value = Math.max(1, parseInt(el.value) + delta);
+}
+
+function startTraining() {
+    if(WORDS.length === 0) loadData();
+    
+    // インポート
+    const imp = document.getElementById('importArea').value.trim();
+    if(imp) {
+        imp.split(',').forEach(token => {
+            const m = token.match(/(\d+)([abc])/);
+            if(m) mastery[parseInt(m[1])] = m[2];
+        });
+    }
+
+    const start = parseInt(document.getElementById('rangeStart').value);
+    const end = parseInt(document.getElementById('rangeEnd').value);
+    let available = WORDS.filter(w => w.id >= start && w.id <= end);
+    
+    // 出題優先順位: c(1) > 未設定(1.5) > b(2) > a(3)
+    const getPriority = (id) => {
+        const s = mastery[id];
+        if(s === 'c') return 1;
+        if(!s) return 1.5;
+        if(s === 'b') return 2;
+        return 3;
+    };
+    
+    available.sort((x, y) => getPriority(x.id) - getPriority(y.id) || Math.random() - 0.5);
+    queue = available;
+
+    if(queue.length === 0) return alert("範囲内に単語がありません。");
+    
+    results = [];
+    document.getElementById("setup").classList.remove('active');
+    document.getElementById("app").classList.add('active');
+    nextWord();
+}
+
+function nextWord() {
+    clearAllTimers();
+    if(queue.length === 0) return finishTraining();
+    
+    activeWord = queue.shift();
+    const total = results.length + queue.length + 1;
+    document.getElementById("infoText").textContent = `ID:${activeWord.id} [${mastery[activeWord.id] || 'NEW'}] | ${results.length+1}/${total}`;
+    document.getElementById("progressBar").style.width = `${(results.length / total) * 100}%`;
+    
+    document.getElementById("englishWord").textContent = activeWord.en;
+    document.getElementById("japaneseWord").textContent = activeWord.ja;
+    document.getElementById("japaneseWord").classList.remove('visible');
+
+    speak(activeWord.en, 'en-US');
+
+    timers.eng = setTimeout(() => {
+        document.getElementById("japaneseWord").classList.add('visible');
+        speak(activeWord.ja, 'ja-JP');
+        const japTime = parseFloat(document.getElementById('japTime').value);
+        const g = document.getElementById("gauge");
+        g.style.transition = `width ${japTime}s linear`;
+        g.style.width = "100%";
+        timers.jap = setTimeout(() => processAnswer(false), japTime * 1000);
+    }, parseFloat(document.getElementById('engTime').value) * 1000);
+}
+
+function processAnswer(isOk) {
+    clearAllTimers();
+    const id = activeWord.id;
+    const prev = mastery[id];
+
+    if(isOk) {
+        if(prev === 'c') mastery[id] = 'b';
+        else mastery[id] = 'a';
+    } else {
+        mastery[id] = 'c';
+    }
+
+    results.push({ ...activeWord, ok: isOk });
+    nextWord();
+}
+
+function speak(txt, lang) {
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(txt);
+    u.lang = lang;
+    u.rate = 1.5;
+    window.speechSynthesis.speak(u);
+}
+
+function clearAllTimers() {
+    clearTimeout(timers.eng);
+    clearTimeout(timers.jap);
+    const g = document.getElementById("gauge");
+    g.style.transition = "none";
+    g.style.width = "0%";
+}
+
+function generateExport() {
+    return Object.keys(mastery)
+        .sort((a, b) => a - b)
+        .map(id => `${id}${mastery[id]}`)
+        .join(',');
+}
+
+function quickCopy() {
+    const str = generateExport();
+    const btn = document.getElementById('midCopyBtn');
+    navigator.clipboard.writeText(str).then(() => {
+        const old = btn.textContent;
+        btn.textContent = "コピー完了！";
+        setTimeout(() => btn.textContent = old, 1000);
+    });
+}
+
+function finishTraining() {
+    window.speechSynthesis.cancel();
+    document.getElementById("app").classList.remove('active');
+    document.getElementById("report").classList.add('active');
+    const ok = results.filter(r => r.ok).length;
+    document.getElementById("resultScore").textContent = `正解: ${ok} / ${results.length}`;
+    document.getElementById("numericalArea").value = generateExport();
+}
+
+function copyText(id, btn) {
+    const area = document.getElementById(id);
+    area.select();
+    navigator.clipboard.writeText(area.value).then(() => {
+        const old = btn.textContent;
+        btn.textContent = "完了";
+        setTimeout(() => btn.textContent = old, 1000);
+    });
+}
+
+document.onkeydown = (e) => {
+    if(!document.getElementById("app").classList.contains('active')) return;
+    if(e.key.toLowerCase() === 'z') processAnswer(true);
+    if(e.key.toLowerCase() === 'a') processAnswer(false);
+};
+</script>
+
+<script type="text/plain" id="words-raw-data">
+vital,(～にとって)非常に重要な(to, for～) 生命の1
 vivid,生き生きとした 鮮やかな2
 revive,～を生き返らせる 生き返る3
 essential,(～にとって)重要な 必要不可欠な(to, for～) 本質的な4
@@ -945,7 +1097,7 @@ offend,怒らせる784
 defend,守る 弁護する785
 motive,動機786
 witness,証人 目撃する787
-arrest,逮捕する88
+arrest,逮捕する788
 detain,拘留する789
 accuse,非難する790
 blame,責任を負わせる791
@@ -1083,7 +1235,7 @@ resign,辞職する922
 retire,退職する923
 quit,やめる924
 farewell,別れ925
-pension,年金926
+pension, p年金926
 funeral,葬式927
 tomb,墓928
 bury,埋葬する929
@@ -1561,7 +1713,7 @@ habitat,生息地1400
 dwell,住む1401
 residence,住居1402
 accommodate,収容する1403
-refuge,避難1404
+refuge,避難 1404
 shelter,避難所1405
 clothes,衣服1406
 fabric,布1407
@@ -1658,23 +1810,23 @@ restore,回復する1497
 relieve,和らげる1498
 retreat,退却する1499
 retrieve,～を回収する、取り戻す1500
-resume,～を再開する； 再開する； 履歴書、要約1501
-dissolve,溶解する； ～を解散する1502
+resume,～を再開する1501
+dissolve,溶解する1502
 erase,～を消す、消去する1503
 delete,～を消す、消去する1504
 wipe out,～を消し去る、絶滅させる1505
-suspend,～を宙吊りにする； を(いったん)中止する、中断する1506
-choke,～を窒息させる、詰まらせる； 窒息させる1507
+suspend,～を宙吊りにする1506
+choke,～を窒息させる、詰まらせる1507
 suffocate,～を窒息させる1508
 squeeze,～を絞る、絞り出す1509
 spill,～をこぼす1510
-make up,(～を)埋め合せる、取り戻す(for)； (～と)仲直りする； ～(話)をでっち上げる； 化粧する1511
+make up,(～を)埋め合せる、取り戻す(for)1511
 compensate,(～を)埋め合わせをする、補償する(for)1512
 make out,～を理解する、判読する1513
 make for,～へ向かう； ～(の実現)に役立つ、～を可能にする1514
 turn out,～であることが分かる、判読する1515
 turn up,現れる、登場する1516
-turn down,～(誘い・要求)を断る； の音量を下げる1517
+turn down,～(誘い・要求)を断る1517
 turn to,～に頼る1518
 take in,～を取り入れる； 理解する； を騙す1519
 take on,～(意味・重要性)を帯びる； (仕事)を引き受ける1520
@@ -1683,7 +1835,7 @@ take up,～を占める； を取り上げる1522
 take over,～(仕事)を引き継ぐ1523
 take to,～が好きになる、習慣になる1524
 put out,～を消す1525
-to put it … / put …,言うと1526
+put,言うと1526
 do,間に合う、良い1527
 make do with,～で間に合わせる1528
 give away,～を(ただで)譲る、(秘密・気持ち)を明かす1529
@@ -1693,7 +1845,7 @@ give off,～(光・熱・期待)を発する1532
 come up with,～を思いつく1533
 come about,生じる、起こる1534
 come into being,生じる1535
-come to,意識を戻す； (全部で)～になる1536
+come to,意識を戻す1536
 come in handy,便利である、役に立つ1537
 Come on.,おいおい、冗談だろ1538
 go on to do,さらに続けて～する1539
@@ -1704,16 +1856,16 @@ bring oneself to do,～する気になる1543
 bring A home to B,AをBに分からせる、実感させる1544
 get at,～を言おうとする1545
 get by,なんとかやりくりする1546
-get ～ across,～を伝える、分かってもらう1547
+get across,～を伝える、分かってもらう1547
 get away with,（罰を受けずに・ばれずに）逃げおおせる1548
 let go of,～を手放す1549
-let ～ in,～を中に入れる1550
-let alone ＝ still less,ましてや～ない1551
-pull up [over],車をを止める1552
+let in,～を中に入れる1550
+let alone,ましてや～ない1551
+pull up,車をを止める1552
 make it,(約束・予定通り)やり遂げる、都合がつく、間に合う1553
 That's it,もう終わりだ； まさにそれだ、その通りだ1554
 That is that,それでおしまいだ、それだけのこと1555
-make ～ of A,Aを～と評価する、判断する1556
+make of A,Aを～と評価する、判断する1556
 make the most of,～を最大限利用する1557
 make the best of,～をできる限り利用する1558
 make sure,確実に～する； ～を確かめる1559
@@ -1726,17 +1878,17 @@ think twice,よく考える1565
 on second thought,考え直して、やっぱり1566
 show off,～を見せびらかせる、誇示する1567
 show up,現れる、登場する1568
-see to,～に対処する、の世話をする、を手配する1569
+see to,～に対調する、の世話をする、を手配する1569
 see through,～（嘘など）を見抜く； ～を最後までやり通す； (人)を最後まで助ける1570
-in the way of A / in A's way,Aの邪魔になって1571
+in A's way,Aの邪魔になって1571
 make one's way,前進する1572
 find one's way,たどり着く、入ってくる1573
 go out of one's way to do,わざわざ～する1574
 by way of,～を経由して、～によって1575
 have a way of doing,～する癖がある、傾向がある1576
 under way,進行中で1577
-true for [of],～に当てはまる1578
-hold true [good],当てはまる、通用する1579
+true for,～に当てはまる1578
+hold true,当てはまる、通用する1579
 true to life,実物そっくり1580
 give rise to,～を生じる、引き起こす1581
 give birth to,～を産む； 生じる、引き起こす1582
@@ -1766,23 +1918,23 @@ get the better of,～に勝る、打ち勝つ1605
 know better,～するほど馬鹿ではない、もっと分別がある1606
 to the best of my knowledge,私の知る限りでは1607
 to say the least,控えめに言っても1608
-take ～ for granted,当然とみなす1609
+take for granted,当然とみなす1609
 take one's word for it,～の言うことを信じる1610
 take it easy,気楽にやる1611
 keep up with,～に遅れずについていく1612
 catch up with,～に追いつく1613
 fall behind,遅れる1614
-keep [stay] in touch with,～と連絡を取り合う1615
+keep in touch with,～と連絡を取り合う1615
 look into,調べる、検討する1616
 look over,～にざっと目を通す1617
-look on [upon],～を（…と）みなす(as)1618
-pass on [down],～を（…に）手渡す、伝える(to)1619
-pass for [as],～として（世間に）通る、通用する1620
+look on,～を（…と）みなす(as)1618
+pass on,～を（…に）手渡す、伝える(to)1619
+pass for,～として（世間に）通る、通用する1620
 pass out,気絶する1621
 pass away,亡くなる1622
-reach (out) for,～に手を伸ばす1623
-set out [off],(～へ)出発する(for)1624
-set ～ free,～を解放する1625
+reach for,～に手を伸ばす1623
+set out,(～へ)出発する(for)1624
+set free,～を解放する1625
 work out,～を解く、考え出す； うまくいく； トレーニングをする1626
 work on,～(仕事)に取り組む1627
 pick up,～を拾う、取り上げる； ～を車に乗せる、車で迎える； ～を買う； ～(言語・知識など)を身に付ける1628
@@ -1799,7 +1951,7 @@ have an eye for,～を見る目がある、鑑賞眼がある1638
 turn a deaf ear to,～を聞こうとしない1639
 make a face,顔をしかめる1640
 remain to do,まだ～していない1641
-have [be] yet to do,まだ～していない1642
+have yet to do,まだ～していない1642
 on behalf of,～に代わって、を代表して1643
 second to none,誰にも負けない1644
 once and for all,これを最後に、きっぱりと1645
@@ -1860,7 +2012,7 @@ wander,(目的もなく)さまよう、歩き回る1699
 roam,歩き回る、徘徊する； ～を徘徊する1700
 stroll,(ぶらぶら)歩く1701
 stride,ひとまたぎ； 進歩； 大股で歩く1702
-stumble,つまずく； (～に)偶然でくわす(on[upon])1703
+stumble,つまずく； (～に)偶然でくわす(on)1703
 creep,這う、こっそり進む1704
 linger,(立ち去らずに)ぐずぐずする、残存する1705
 sniff,くんくん嗅ぐ； ～のにおいです嗅ぐ1706
@@ -1895,7 +2047,7 @@ affirmative,肯定の、積極的な1734
 positive,積極的な、プラスの； 確信している1735
 vertical,垂直の、縦の1736
 horizontal,水平の1737
-parallel,(～と)平行の、類似した(to～)； 類似(物)、匹敵するもの1738
+parallel,(～と)平行の、類似した(to)； 類似(物)、匹敵するもの1738
 indifferent,(～に対して)無関心な(to)1739
 infamous,悪名高い、評判が悪い1740
 notorious,悪名高い、評判が悪い1741
@@ -1950,7 +2102,7 @@ gap,隔たり、差1789
 dilemma,ジレンマ、板挾み、難題1790
 stretch,～を伸ばす； 伸びる、広がる1791
 elite,エリート、精鋭； エリートの1792
-series,連続1793
+series,連続 1793
 serial,連続した1794
 cereal,穀物、穀物加工食品1795
 irregular,不規則な1796
@@ -1973,7 +2125,7 @@ athlete,運動選手1812
 laundry,洗濯物1813
 label,～に(…という)レッテルを貼る(as)1814
 loose,ゆるんだ、だらしない1815
-humor,ユーモア； 機謙1816
+humor,ユーモア； 機嫌1816
 image,イメージ、画像、映像1817
 amateur,アマチュア、素人1818
 thrill,～をわくわくさせる； 興奮1819
@@ -1996,7 +2148,7 @@ casual,何気ない、偶然の； 略式の1835
 challenge,(やりがいのある)難題、課題； 挑戦； ～に挑む、挑戦する； ～に異議を唱える1836
 naive,世間知らずの、うぶな1837
 alien,異質な、外国の 外国人1838
-resort,(～[手段]に)訴える(to～) 行楽地1839
+resort,(～に)訴える(to) 行楽地1839
 web,クモの巣； (インターネット上の)ネットワーク、ウェブ1840
 faint,かすかな、ぼんやりした 失神する1841
 interview,インタビュー、面接1842
@@ -2020,14 +2172,14 @@ enroll,～を登録する、入学・入会させる； 入学する1859
 register,～を登録する、記録する； 書留にする； 登録する1860
 sign up,（～に）登録する(for)1861
 tuition,授業料1862
-tutor,家庭教師、個人電話； ～を(個人的に)教える1863
+tutor,家庭教師、個人指導教員； ～を(個人的に)教える1863
 faculty,(大学の)学部； (身体・精神の)能力1864
 facility,施設、設備； 能力、容易さ1865
 sophomore,(高校・大学の)二年生1866
 semester,(二学期制の)学期1867
 curriculum,カリキュラム、教科課程1868
 diploma,(大学の)学位1869
-grade,等級、学生； 評価、成績1870
+grade,等級、学年； 評価、成績1870
 mark,成績； 印、指標； ～を印す1871
 rank,等級、階級 位置する； ～を位置づける1872
 profession,(知的・専門的な)職業1873
@@ -2068,7 +2220,7 @@ room,部屋； 空間； 余地、可能性1907
 story,物語； ～階建て1908
 manner,方法、やり方； (-s)礼儀作法、行儀1909
 address,住所； ～に差し向ける； 取り組む； 話しかける1910
-check,～を確かめる； ～を抑制する； 検査：抑制、阻止； 小切手1911
+check,～を確かめる； ～を抑制する； 検査； 抑制、阻止； 小切手1911
 forward,前方へ； ～(手紙・メール)を転送する1912
 chance,機会； 可能性、見込み； 偶然1913
 air,空気、空； 外見、態度、雰囲気1914
@@ -2089,8 +2241,8 @@ minute,極めて小さい、微細な1928
 excuse,言い訳、理由1929
 wind,～を巻きつける、巻く1930
 grind,～を（粉に）挽く、すりつぶす1931
-command,命令； (言語を)自由に使う能力； ～を見晴らす2932
-charge,～を(…で)非難する； 告発する(with…)； ～に料金を課す； ～に責任を課す； ～を充電する； 非難； 料金； 責任1933
+command,命令； (言語を)自由に使う能力； ～を見晴らす1932
+charge,～を(…で)非難する； 告発する(with)； ～に料金を課す； ～に責任を課す； ～を充電する； 非難； 料金； 責任1933
 history,歴史、歴史学； 経歴1934
 dinosaur,恐竜1935
 ape,サル、類人猿1936
@@ -2102,12 +2254,12 @@ civilization,文明1941
 civil,市民の1942
 medieval,中世の1943
 feudal,封建制の1944
-Renaissance(the),ルネサンス1945
+Renaissance,ルネサンス1945
 revolution,革命、改革1946
 empire,帝国1947
 imperial,帝国の1948
 colony,植民地、集落1949
-slave,奴隷； (～に)とらわれている人(to～)1950
+slave,奴隷； (～に)とらわれている人(to)1950
 modern,現代の1951
 metropolis,大都市1952
 bustle,喧噪1953
@@ -2119,7 +2271,7 @@ navy,海軍1958
 navigation,航海1959
 soldier,軍人、兵士1960
 troop,軍隊、兵士1961
-hostage,捕虜1962
+hostage,人質1962
 weapon,武器1963
 sword,剣1964
 strategy,戦略、方策1965
@@ -2144,7 +2296,7 @@ whereas,(～である)その一方で1983
 on the other hand,その一方で1984
 meanwhile,その間に1985
 in the meantime,その間に1986
-that is (to say),すなわち、つまり1987
+that is,すなわち、つまり1987
 namely,すなわち、つまり1988
 in short,手短に言うと、つまりは1989
 say,例えば1990
@@ -2153,7 +2305,7 @@ indeed,確かに、本当に1992
 somewhat,いくぶん、やや1993
 somehow,どういうわけか； 何らかの方法で1994
 otherwise,さもなければ； その他の点で； 違ったふうに、別のやり方で1995
-given,～仮定すると、があれば、を考慮すると； 特定の、任意の1996
+given,～と仮定すると、があれば、を考慮すると； 特定の、任意の1996
 rightly,正当に、当然のことながら1997
 justly,正当に、当然のことながら1998
 mistakenly,間違って1999
@@ -2169,15 +2321,15 @@ premise,前提、仮定2008
 entity,存在物、統一体2009
 discourse,論文、講演、言説2010
 transcend,～を越える、超越する2011
-ascribe,(…に)～の原因を帰す(to…)2012
+ascribe,(に)～の原因を帰す(to)2012
 intrinsic,本来備わっている2013
 articulate,～を(はっきり)言う、発音する； ～をつなぐ2014
 formula,公式； 決まり切ったやり方； 製法2015
-contend,…と主張する(that…)； (～と)争う、(に)対処する(with～)2016
+contend,と主張する(that)； (～と)争う、(に)対処する(with)2016
 advocate,～(主義・理論)を提唱する、主張する； 提唱者2017
 delegation,代表派遣、使節2018
 sanction,制裁； 是認、許可2019
-pledge,約束、誓約； ～を約束する、誓約する(to do, that…)2020
+pledge,約束、誓約； ～を約束する、誓約する(to do, that)2020
 agenda,協議事項、議題2021
 amend,～を修正する、改正する2022
 subsidy,補助金、助成金2023
@@ -2185,7 +2337,7 @@ intuition,直感2024
 discern,～を見分ける、識別する2025
 skeptical,懐疑的な2026
 benign,良性の、害のない； 有益な2027
-malicious,悪意的な2028
+malicious,悪意のある2028
 hypocrisy,偽善2029
 undermine,～を阻害する、弱体化する2030
 impair,～を弱める、損なう2031
@@ -2206,7 +2358,7 @@ resilient,弾力性のある； 回復力のある、立ち直りの早い2045
 erode,腐食する； ～を腐食する、侵食する2046
 erupt,噴火する2047
 assimilate,～を同化する； 消化・吸収する； 同化する2048
-adhere,(～に)くっつく、(を)固守する(to～)2049
+adhere,(～に)くっつく、(を)固守する(to)2049
 exile,(祖国からの)追放、亡命； ～を追放する2050
 probe,探査； 探査機 ～を厳密に調べる2051
 scrutinize,～を綿密に調べる2052
@@ -2215,11 +2367,11 @@ census,国勢調査2054
 censorship,検閲2055
 index,指標、指針、指数； 見出し2056
 defy,～を拒む、に反抗する2057
-comply,～(規則・命令・基準)に従う、合致する(with ～)2058
+comply,～(規則・命令・基準)に従う、合致する(with)2058
 synthesize,～を総合する、合成する、合成して作り出す2059
 coordinate,～を同調して動かす、調整する2060
 subordinate,従属している、下位の； 二次的な 従属するもの、下位のもの ～を従属させる2061
-incorporate,～を(…に)組み込む(into…)2062
+incorporate,～を(…に)組み込む(into)2062
 comprise,～を構成する； ～からなる2063
 manipulate,～を操作する、あやつる2064
 tangible,触れることができる； 明白な、具体的な2065
@@ -2231,7 +2383,7 @@ proximity,(～に)近いこと(to)2070
 dismay,～を動揺させる； 動揺2071
 appall,～をぎょっとさせる2072
 stun,～をびっくりさせる、茫然とさせる2073
-marvel,(～に)驚く、驚き(at～)； 驚き2074
+marvel,(～に)驚く、驚き(at)； 驚き2074
 perplex,～を当惑させる2075
 bewilder,～を当惑させる2076
 astound,～をびっくりさせる2077
@@ -2332,165 +2484,8 @@ antique,古い、骨董の2171
 transact,～(業務・取引)を処理する、行う2172
 ornament,装飾2173
 corridor,廊下2174
-warrant,～を保証する； 正正化する2175
-mischief,いたずら、悪さ2176`;
-
-let params = {
-    rangeStart: 1,
-    rangeEnd: 2176,
-    speechRate: 1.6,
-    engTime: 1.0,
-    japTime: 1.0
-};
-
-let currentQueue = [], trainingResults = [], activeWord = null;
-let engTimer = null, japTimer = null;
-let startTime = null, endTime = null;
-
-window.onload = () => {
-    const saved = localStorage.getItem("teppeki_full_state_v3");
-    if(saved) params = {...params, ...JSON.parse(saved)};
-    updateAllDisplays();
-    renderSections();
-};
-
-function changeVal(key, step) {
-    params[key] = parseFloat((params[key] + step).toFixed(1));
-    if(params[key] < 0.1) params[key] = 0.1;
-    if(key.includes('range')) params[key] = Math.max(1, Math.round(params[key]));
-    if(key === 'rangeEnd' && params[key] > 2176) params[key] = 2176;
-    updateAllDisplays();
-    localStorage.setItem("teppeki_full_state_v3", JSON.stringify(params));
-}
-
-function updateAllDisplays() {
-    Object.keys(params).forEach(key => {
-        const el = document.getElementById(`disp_${key}`);
-        if(el) el.textContent = params[key];
-    });
-}
-
-function renderSections() {
-    const nav = document.getElementById("sectionContainer");
-    nav.innerHTML = "";
-    for(let i=1; i<=2176; i+=100) {
-        const end = Math.min(i+99, 2176);
-        const btn = document.createElement("button");
-        btn.className = "nav-item";
-        btn.textContent = `${i}-${end}`;
-        btn.onclick = () => {
-            params.rangeStart = i;
-            params.rangeEnd = end;
-            updateAllDisplays();
-        };
-        nav.appendChild(btn);
-    }
-}
-
-function initTraining() {
-    startTime = new Date();
-    const lines = FULL_DATA.trim().split("\n");
-    const targets = lines.slice(params.rangeStart - 1, params.rangeEnd).map(l => {
-        const p = l.split(",");
-        // 最後の番号が結合されている場合があるため、整理
-        let rawJa = p[1] || "";
-        let cleanJa = rawJa.replace(/[0-9]+$/, "").trim();
-        return { en: (p[0] || "").trim(), ja: cleanJa };
-    });
-
-    currentQueue = targets.sort(() => Math.random() - 0.5);
-    trainingResults = [];
-    document.getElementById("setup").style.display = "none";
-    document.getElementById("app").style.display = "flex";
-    nextWord();
-}
-
-function nextWord() {
-    if(currentQueue.length === 0) return finishTraining();
-    
-    activeWord = currentQueue.pop();
-    const total = trainingResults.length + currentQueue.length + 1;
-    document.getElementById("infoText").textContent = `${trainingResults.length + 1} / ${total}`;
-    document.getElementById("progressBar").style.width = `${(trainingResults.length / total) * 100}%`;
-    
-    const cardEn = document.getElementById("englishWord");
-    const cardJa = document.getElementById("japaneseWord");
-    cardEn.textContent = activeWord.en;
-    cardJa.textContent = "";
-    
-    const gauge = document.getElementById("gauge");
-    gauge.style.transition = "none";
-    gauge.style.width = "0%";
-
-    speak(activeWord.en, "en-US");
-
-    clearTimeout(engTimer);
-    engTimer = setTimeout(showAnswer, params.engTime * 1000);
-}
-
-function showAnswer() {
-    document.getElementById("japaneseWord").textContent = activeWord.ja;
-    speak(activeWord.ja, "ja-JP");
-
-    const gauge = document.getElementById("gauge");
-    gauge.style.transition = `width ${params.japTime}s linear`;
-    gauge.style.width = "100%";
-
-    clearTimeout(japTimer);
-    japTimer = setTimeout(() => processAnswer(false), params.japTime * 1000);
-}
-
-function processAnswer(isCorrect) {
-    clearTimeout(engTimer);
-    clearTimeout(japTimer);
-    trainingResults.push({ ...activeWord, ok: isCorrect });
-    nextWord();
-}
-
-function speak(text, lang) {
-    speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = lang;
-    u.rate = params.speechRate;
-    speechSynthesis.speak(u);
-}
-
-function finishTraining() {
-    endTime = new Date();
-    document.getElementById("app").style.display = "none";
-    document.getElementById("report").style.display = "block";
-    
-    const missed = trainingResults.filter(r => !r.ok);
-    const correctCount = trainingResults.length - missed.length;
-    const accuracy = ((correctCount / trainingResults.length) * 100).toFixed(1);
-    
-    const timeStr = `${startTime.getHours()}:${String(startTime.getMinutes()).padStart(2, '0')} ～ ${endTime.getHours()}:${String(endTime.getMinutes()).padStart(2, '0')}`;
-    
-    document.getElementById("resultScore").textContent = `正解: ${correctCount} / ${trainingResults.length} (${accuracy}%)`;
-    document.getElementById("resultTime").textContent = `修行時間: ${timeStr}`;
-    document.getElementById("missedArea").value = missed.map(m => `${m.en},${m.ja}`).join("\n");
-}
-
-function copyResults() {
-    const missed = trainingResults.filter(r => !r.ok);
-    const correctCount = trainingResults.length - missed.length;
-    const accuracy = ((correctCount / trainingResults.length) * 100).toFixed(1);
-    const timeStr = `${startTime.getHours()}:${String(startTime.getMinutes()).padStart(2, '0')} ～ ${endTime.getHours()}:${String(endTime.getMinutes()).padStart(2, '0')}`;
-    
-    const text = `【修行結果】\n時間：${timeStr}\n正解：${correctCount}/${trainingResults.length} (${accuracy}%)\n\n【間違えた単語】\n${missed.map(m => m.en + "：" + m.ja).join("\n")}`;
-    
-    navigator.clipboard.writeText(text).then(() => {
-        alert("修行結果をコピーしました。お疲れ様でした。");
-    });
-}
-
-document.onkeydown = (e) => {
-    if(document.getElementById("app").style.display === "flex") {
-        const k = e.key.toLowerCase();
-        if(k === "z") processAnswer(true);
-        if(k === "a") processAnswer(false);
-    }
-};
+warrant,～を保証する； 正当化する2175
+mischief,いたずら、悪さ2176
 </script>
 </body>
 </html>
