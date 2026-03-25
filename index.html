@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=5.0,user-scalable=yes,viewport-fit=cover">
-    <title>鉄壁修行 V10.0 究極管理版</title>
+    <title>鉄壁修行 V11.0 究極管理版</title>
     <style>
         :root {
             --bg: #030712;
@@ -80,7 +80,7 @@
 
 <div id="setup" class="active">
     <div class="container">
-        <h1>鉄壁修行 V10.0</h1>
+        <h1>鉄壁修行 V11.0</h1>
         
         <div class="input-group" style="margin-bottom:15px; background: #1e1b4b;">
             <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom:6px;">
@@ -183,10 +183,10 @@ let stressTimer = null;
 let enVoice = null;
 
 window.onload = () => {
-    const savedM = localStorage.getItem('teppeki_mastery_v10');
+    const savedM = localStorage.getItem('teppeki_mastery_v11');
     if (savedM) mastery = JSON.parse(savedM);
     
-    const savedC = localStorage.getItem('teppeki_config_v10');
+    const savedC = localStorage.getItem('teppeki_config_v11');
     if (savedC) {
         const c = JSON.parse(savedC);
         ['rangeStart', 'rangeEnd', 'rateEn', 'rateJa', 'limitTime'].forEach(k => {
@@ -197,7 +197,7 @@ window.onload = () => {
 };
 
 function saveAll() {
-    localStorage.setItem('teppeki_mastery_v10', JSON.stringify(mastery));
+    localStorage.setItem('teppeki_mastery_v11', JSON.stringify(mastery));
     const config = {
         rangeStart: document.getElementById('rangeStart').value,
         rangeEnd: document.getElementById('rangeEnd').value,
@@ -205,7 +205,7 @@ function saveAll() {
         rateJa: document.getElementById('rateJa').value,
         limitTime: document.getElementById('limitTime').value
     };
-    localStorage.setItem('teppeki_config_v10', JSON.stringify(config));
+    localStorage.setItem('teppeki_config_v11', JSON.stringify(config));
 }
 
 window.speechSynthesis.onvoiceschanged = () => {
@@ -214,7 +214,9 @@ window.speechSynthesis.onvoiceschanged = () => {
 };
 
 function loadData() {
-    const raw = document.getElementById('words-raw-data').textContent.trim();
+    const dataNode = document.getElementById('words-raw-data');
+    if (!dataNode) return;
+    const raw = dataNode.textContent.trim();
     const idMap = new Map();
     raw.split('\n').forEach(line => {
         const parts = line.split(',');
@@ -248,7 +250,7 @@ function clearImport() {
     if(!confirm("全ての進捗データを消去しますか？")) return;
     document.getElementById('importArea').value = '';
     mastery = {};
-    localStorage.removeItem('teppeki_mastery_v10');
+    localStorage.removeItem('teppeki_mastery_v11');
 }
 
 function getMasteryString() {
@@ -333,7 +335,6 @@ function nextWord() {
     document.getElementById("infoText").textContent = `ID:${activeWord.id} | ${results.length+1}/${total}`;
     document.getElementById("progressBar").style.width = `${(results.length / total) * 100}%`;
     
-    // バッジ更新
     const badge = document.getElementById("wordBadge");
     const status = mastery[activeWord.id];
     badge.textContent = status ? status : "NEW";
@@ -342,25 +343,30 @@ function nextWord() {
     document.getElementById("englishWord").textContent = activeWord.en;
     document.getElementById("japaneseWord").textContent = activeWord.ja;
     
-    speak(activeWord.en, 'en-US', true);
+    speakEn(activeWord.en);
 }
 
-function speak(txt, lang, isEn) {
+function speakEn(txt) {
     window.speechSynthesis.cancel();
     const ut = new SpeechSynthesisUtterance(txt);
-    ut.lang = lang;
-    ut.rate = parseFloat(document.getElementById(isEn ? 'rateEn' : 'rateJa').value) || 1.5;
-    if (isEn && enVoice) ut.voice = enVoice;
+    ut.lang = 'en-US';
+    ut.rate = parseFloat(document.getElementById('rateEn').value) || 1.5;
+    if (enVoice) ut.voice = enVoice;
     
     ut.onend = () => {
-        if (isEn) {
-            // 英語読み上げ終了後に日本語を表示して読み上げる
-            document.getElementById("japaneseWord").classList.add('visible');
-            speak(activeWord.ja, 'ja-JP', false);
-        } else {
-            // 日本語読み上げ終了後にタイマー開始
-            startStressTimer();
-        }
+        document.getElementById("japaneseWord").classList.add('visible');
+        speakJa(activeWord.ja);
+    };
+    window.speechSynthesis.speak(ut);
+}
+
+function speakJa(txt) {
+    const ut = new SpeechSynthesisUtterance(txt);
+    ut.lang = 'ja-JP';
+    ut.rate = parseFloat(document.getElementById('rateJa').value) || 1.5;
+    
+    ut.onend = () => {
+        startStressTimer();
     };
     window.speechSynthesis.speak(ut);
 }
@@ -381,8 +387,14 @@ function processAnswer(isOk) {
     const prev = mastery[id];
     
     if (isOk) {
-        // cならbへ、それ以外（NEW/b）ならaへ
-        mastery[id] = (prev === 'c') ? 'b' : 'a';
+        if (prev === 'c') {
+            mastery[id] = 'b';
+        } else if (prev === 'b') {
+            mastery[id] = 'a';
+        } else {
+            // NEW（未登録）や既にaの場合はaにする
+            mastery[id] = 'a';
+        }
     } else {
         mastery[id] = 'c';
     }
@@ -413,6 +425,8 @@ document.onkeydown = (e) => {
     if (e.code === 'Space') { e.preventDefault(); finishTraining(); }
 };
 </script>
+
+<script type="text/plain" id="words-raw-data">
 
 
 <script type="text/plain" id="words-raw-data">
