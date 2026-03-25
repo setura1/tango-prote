@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
-    <title>単語鉄壁修行プロ 2176 (BG対応)</title>
+    <title>単語鉄壁修行プロ 2176 (Ver.3.0)</title>
     <style>
         :root {
             --bg: #f0f4f8;
@@ -12,6 +12,7 @@
             --primary: #2563eb;
             --success: #22c55e;
             --danger: #ef4444;
+            --gray: #64748b;
         }
         @media (prefers-color-scheme: dark) {
             :root {
@@ -23,38 +24,47 @@
         }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         html, body { margin: 0; width: 100%; height: 100%; background: var(--bg); font-family: sans-serif; color: var(--text); }
-        body { overflow: hidden; }
-        #setup, #report { position: fixed; inset: 0; background: var(--bg); padding: 16px; z-index: 10; overflow: auto; display: none; }
-        #setup { display: block; }
+        body { overflow-y: auto; }
+        
+        #setup, #report { position: absolute; inset: 0; background: var(--bg); padding: 16px; z-index: 10; display: none; }
+        #setup { display: block; min-height: 100vh; }
         .container { max-width: 600px; margin: 0 auto; background: var(--container); border-radius: 24px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        
         textarea, input, button { width: 100%; font-size: 16px; border-radius: 14px; border: 1px solid #e2e8f0; }
-        textarea, input { padding: 14px; background: rgba(0,0,0,0.03); color: inherit; }
-        textarea { min-height: 150px; font-family: monospace; font-size: 11px; line-height: 1.4; }
+        textarea, input { padding: 12px; background: rgba(0,0,0,0.03); color: inherit; text-align: center; }
+        textarea { min-height: 120px; font-family: monospace; font-size: 11px; text-align: left; overflow-y: scroll; }
+        
+        .num-group { display: flex; gap: 5px; align-items: center; margin-top: 5px; }
+        .step-btn { width: 60px; height: 50px; flex-shrink: 0; background: var(--gray); color: white; border: none; font-size: 18px; font-weight: bold; border-radius: 10px; cursor: pointer; }
+        
         button { min-height: 54px; font-weight: 800; cursor: pointer; border: none; transition: all 0.1s ease; display: flex; align-items: center; justify-content: center; }
         button:active { transform: scale(0.95); filter: brightness(0.9); }
-        #startBtn { background: var(--primary); color: #fff; margin-top: 12px; }
+        
+        #startBtn { background: var(--primary); color: #fff; margin-top: 25px; font-size: 20px; }
         #retryMissedBtn { background: transparent; color: var(--danger); border: 2px solid var(--danger); margin-top: 10px; display: none; }
+        
         .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
         .label { font-size: 12px; font-weight: 700; opacity: 0.7; margin: 14px 0 6px 4px; }
-        #app { width: 100%; height: 100%; display: flex; flex-direction: column; padding: max(15px, env(safe-area-inset-top)) 16px max(20px, env(safe-area-inset-bottom)) 16px; }
+        .count-badge { background: var(--primary); color: white; padding: 3px 10px; border-radius: 20px; font-size: 12px; }
+
+        #app { position: fixed; inset: 0; width: 100%; height: 100%; display: none; flex-direction: column; padding: max(15px, env(safe-area-inset-top)) 16px max(20px, env(safe-area-inset-bottom)) 16px; background: var(--bg); z-index: 100; }
         #progressBarWrap { width: 100%; height: 8px; background: rgba(0,0,0,0.1); border-radius: 10px; overflow: hidden; }
         #progressBar { width: 0%; height: 100%; background: var(--primary); transition: width .3s ease; }
-        #card { flex: 1 1 auto; background: var(--container); border-radius: 32px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; margin: 15px 0; box-shadow: 0 4px 15px rgba(0,0,0,0.1); position: relative; overflow: hidden; }
+        #card { flex: 1 1 auto; background: var(--container); border-radius: 32px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; margin: 15px 0; box-shadow: 0 4px 15px rgba(0,0,0,0.1); position: relative; overflow: hidden; padding: 20px; }
         #gaugeWrap { position: absolute; bottom: 0; left: 0; width: 100%; height: 6px; background: rgba(0,0,0,0.05); }
         #gauge { width: 100%; height: 100%; background: var(--danger); transform-origin: left; transform: scaleX(0); }
-        #comboDisplay { position: absolute; top: 20px; right: 20px; font-size: 20px; font-weight: 900; color: var(--success); opacity: 0; transition: transform 0.2s; }
-        #comboDisplay.active { opacity: 1; transform: scale(1.2); }
-        #englishWord { font-size: 34px; font-weight: 900; padding: 0 10px; }
-        #japaneseWord { margin-top: 18px; font-size: 24px; color: var(--primary); min-height: 1.2em; font-weight: 600; padding: 0 15px; }
+        #comboDisplay { position: absolute; top: 20px; right: 20px; font-size: 20px; font-weight: 900; color: var(--success); opacity: 0; }
+        #comboDisplay.active { opacity: 1; transform: scale(1.2); transition: 0.2s; }
+        #englishWord { font-size: 38px; font-weight: 900; word-break: break-all; }
+        #japaneseWord { margin-top: 20px; font-size: 24px; color: var(--primary); font-weight: 700; word-break: break-all; }
         #buttons { flex: 0 0 auto; display: grid; grid-template-columns: 1fr 0.6fr 1fr; gap: 20px; }
         #correctBtn { background: var(--success); color: #fff; }
         #wrongBtn { background: var(--danger); color: #fff; }
-        #againBtn { background: var(--container); border: 2px solid #e2e8f0; font-size: 14px; }
-        #historyBox { margin-top: 20px; font-size: 13px; opacity: 0.8; line-height: 1.6; }
+        #againBtn { background: var(--container); border: 2px solid #e2e8f0; }
+
         @media (max-width: 480px){
             #buttons { grid-template-columns: 1fr; gap: 10px; }
             #correctBtn { order: 1; } #againBtn { order: 2; min-height: 44px; } #wrongBtn { order: 3; }
-            #englishWord { font-size: 28px; }
         }
     </style>
 </head>
@@ -62,35 +72,52 @@
 
 <div id="setup">
     <div class="container">
-        <div style="font-size:22px;font-weight:900;text-align:center;margin-bottom:15px;">単語修行プロ 2176</div>
-        <div class="label">単語リスト (番号付き)</div>
+        <div style="font-size:22px;font-weight:900;text-align:center;margin-bottom:15px;">単語鉄壁修行 2176 <span id="totalBadge" class="count-badge">0語</span></div>
+        
+        <div class="label">単語リスト (省略なし・番号付き)</div>
         <textarea id="importArea" spellcheck="false"></textarea>
-        <div class="label">テスト範囲設定</div>
-        <div class="row">
-            <div><div class="label">開始番号</div><input type="number" id="rangeStart" value="1" min="1"></div>
-            <div><div class="label">終了番号</div><input type="number" id="rangeEnd" value="2176"></div>
-        </div>
-        <div class="row">
-            <div><div class="label">再生速度</div><input type="number" id="rateAll" value="1.4" step="0.1"></div>
-            <div><div class="label">制限時間(ms)</div><input type="number" id="answerLimit" value="2000" step="100"></div>
-        </div>
-        <button id="startBtn">修行開始</button>
-        <button id="retryMissedBtn">ミスの復習</button>
-        <div id="historyBox">
-            <div style="font-weight:bold; border-bottom:1px solid #ddd; margin-bottom:5px;">直近の修行ログ</div>
-            <div id="historyContent">記録なし</div>
-        </div>
-    </div>
-</div>
 
-<div id="report">
-    <div class="container">
-        <div style="font-size:20px;font-weight:900;text-align:center;">修行リザルト</div>
-        <div id="scoreSummary" style="text-align:center; font-size:18px; margin:15px 0; font-weight:800;"></div>
-        <div id="maxComboReport" style="text-align:center; font-size:14px; color:var(--success); margin-bottom:10px;"></div>
-        <textarea id="copyArea" readonly spellcheck="false"></textarea>
-        <button id="copyBtn" style="background: var(--success); color:#fff; margin:15px 0 10px;">結果をコピー</button>
-        <button id="backToSetupBtn">修行を終える</button>
+        <div class="row">
+            <div>
+                <div class="label">修行開始番号 (±100)</div>
+                <div class="num-group">
+                    <button class="step-btn" onclick="adjustValue('rangeStart', -100)">-</button>
+                    <input type="number" id="rangeStart" value="1">
+                    <button class="step-btn" onclick="adjustValue('rangeStart', 100)">+</button>
+                </div>
+            </div>
+            <div>
+                <div class="label">修行終了番号 (±100)</div>
+                <div class="num-group">
+                    <button class="step-btn" onclick="adjustValue('rangeEnd', -100)">-</button>
+                    <input type="number" id="rangeEnd" value="2176">
+                    <button class="step-btn" onclick="adjustValue('rangeEnd', 100)">+</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div>
+                <div class="label">再生速度</div>
+                <input type="number" id="rateAll" value="1.4" step="0.1">
+            </div>
+            <div>
+                <div class="label">制限時間 ms (±100)</div>
+                <div class="num-group">
+                    <button class="step-btn" onclick="adjustValue('answerLimit', -100)">-</button>
+                    <input type="number" id="answerLimit" value="2000">
+                    <button class="step-btn" onclick="adjustValue('answerLimit', 100)">+</button>
+                </div>
+            </div>
+        </div>
+
+        <button id="startBtn">修行開始</button>
+        <button id="retryMissedBtn">ミスの復習 (前回分)</button>
+
+        <div id="historyBox">
+            <div style="font-weight:bold; border-bottom:1px solid #ddd; margin-top:25px; padding-bottom:5px;">ログ</div>
+            <div id="historyContent" style="font-size: 13px; opacity: 0.8; margin-top: 10px;">記録なし</div>
+        </div>
     </div>
 </div>
 
@@ -110,8 +137,19 @@
     </div>
 </div>
 
+<div id="report">
+    <div class="container">
+        <div style="font-size:22px;font-weight:900;text-align:center;">修行完了</div>
+        <div id="scoreSummary" style="text-align:center; font-size:18px; margin:20px 0; font-weight:800;"></div>
+        <div id="maxComboReport" style="text-align:center; font-size:14px; color:var(--success); margin-bottom:15px;"></div>
+        <textarea id="copyArea" readonly spellcheck="false" style="min-height: 200px; font-size: 12px;"></textarea>
+        <button id="copyBtn" style="background: var(--success); color:#fff; margin:15px 0 10px;">ミスをコピー</button>
+        <button id="backToSetupBtn">終了</button>
+    </div>
+</div>
+
 <script>
-// --- [マスターデータ領域] ---
+// --- [全単語データ 2176語] ---
 const masterVocabData = `vital,(～にとって)非常に重要な(to, for～) 生命の1
 vivid,生き生きとした 鮮やかな2
 revive,～を生き返らせる 生き返る3
@@ -300,7 +338,7 @@ equip,～に装備する185
 promote,～を促進する 昇進させる186
 enhance,～を高める 強化する187
 accelerate,～を加速する 促進する188
-boost,～を促進する 高める
+boost,～を促進する 高める189
 urge,～にせき立てる 衝動 欲望190
 encourage,～を励ます 促進する191
 project,企画 事業 見積もる 投影する192
@@ -891,7 +929,7 @@ crime,犯罪776
 ethics,倫理777
 moral,道徳的な778
 confess,告白する779
-punish,罰する780
+punish,罰する80
 penalty,刑罰781
 murder,殺人782
 victim,犠牲者783
@@ -1724,7 +1762,7 @@ take ～ for granted,当然とみなす1609
 take one's word for it,～の言うことを信じる1610
 take it easy,気楽にやる1611
 keep up with,～に遅れずについていく1612
-catch up with,～に追いつく1613
+catch up with,～に追いたく1613
 fall behind,遅れる1614
 keep [stay] in touch with,～と連絡を取り合う1615
 look into,調べる、検討する1616
@@ -1927,7 +1965,7 @@ athlete,運動選手1812
 laundry,洗濯物1813
 label,～に(…という)レッテルを貼る(as)1814
 loose,ゆるんだ、だらしない1815
-humor,ユーモア； 機謙1816
+humor,ユーア； 機謙1816
 image,イメージ、画像、映像1817
 amateur,アマチュア、素人1818
 thrill,～をわくわくさせる； 興奮1819
@@ -2292,66 +2330,64 @@ mischief,いたずら、悪さ2176`;
 const importArea = document.getElementById("importArea");
 const rateInput = document.getElementById("rateAll");
 const limitInput = document.getElementById("answerLimit");
-const setup = document.getElementById("setup");
-const report = document.getElementById("report");
-const englishWordEl = document.getElementById("englishWord");
-const japaneseWordEl = document.getElementById("japaneseWord");
-const progressBarEl = document.getElementById("progressBar");
-const comboDisplay = document.getElementById("comboDisplay");
-const gaugeEl = document.getElementById("gauge");
+const totalBadge = document.getElementById("totalBadge");
 const historyContent = document.getElementById("historyContent");
-const correctBtn = document.getElementById("correctBtn");
-const wrongBtn = document.getElementById("wrongBtn");
-const retryMissedBtn = document.getElementById("retryMissedBtn");
 
 let queue = [], results = [], current = null, timer = null, running = false, accepting = false;
 let combo = 0, maxCombo = 0, missedWords = [];
-let startTime = null, endTime = null;
 
-// --- [バックグラウンド維持のための設定] ---
-let silentPlayer = null;
-function startSilentAudio() {
-    if (!silentPlayer) {
-        // 非常に短い無音のMP3データ(Base64)
-        const silentSrc = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==";
-        silentPlayer = new Audio(silentSrc);
-        silentPlayer.loop = true;
-    }
-    silentPlayer.play().catch(e => console.log("Silent audio start failed:", e));
+// --- [機能: 数値調整] ---
+function adjustValue(id, step) {
+    const el = document.getElementById(id);
+    el.value = Math.max(0, parseInt(el.value) + step);
+    saveState();
 }
 
+// --- [機能: 永続化] ---
+function saveState() {
+    const data = {
+        start: document.getElementById("rangeStart").value,
+        end: document.getElementById("rangeEnd").value,
+        rate: rateInput.value,
+        limit: limitInput.value,
+        scrollY: window.scrollY
+    };
+    localStorage.setItem("teppeki_state", JSON.stringify(data));
+}
+
+function loadState() {
+    const saved = JSON.parse(localStorage.getItem("teppeki_state"));
+    if (saved) {
+        document.getElementById("rangeStart").value = saved.start;
+        document.getElementById("rangeEnd").value = saved.end;
+        rateInput.value = saved.rate;
+        limitInput.value = saved.limit;
+        setTimeout(() => window.scrollTo({ top: saved.scrollY, behavior: 'smooth' }), 1000);
+    }
+    const missed = JSON.parse(localStorage.getItem("teppeki_missed"));
+    if (missed && missed.length > 0) {
+        missedWords = missed;
+        document.getElementById("retryMissedBtn").style.display = "block";
+    }
+}
+
+window.addEventListener("scroll", () => { if (!running) saveState(); });
+
+function countWords() {
+    const lines = importArea.value.trim().split("\n").filter(l => l.includes(","));
+    totalBadge.textContent = `${lines.length}語`;
+    saveState();
+}
+importArea.addEventListener("input", countWords);
+
+// --- [修行ロジック] ---
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-function playSound(type) {
+function playBeep(ok) {
     const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
     osc.connect(gain); gain.connect(audioCtx.destination);
-    if(type === 'ok') {
-        osc.frequency.setValueAtTime(880, audioCtx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(1320, audioCtx.currentTime + 0.1);
-        gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
-        osc.start(); osc.stop(audioCtx.currentTime + 0.2);
-    } else {
-        osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, audioCtx.currentTime);
-        gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
-        osc.start(); osc.stop(audioCtx.currentTime + 0.3);
-    }
-}
-
-window.onload = () => {
-    importArea.value = masterVocabData;
-    updateHistoryDisplay();
-};
-
-function saveHistory(score, total) {
-    let logs = JSON.parse(localStorage.getItem("vocab_logs") || "[]");
-    logs.unshift({ date: new Date().toLocaleString('ja-JP', {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'}), score, total });
-    localStorage.setItem("vocab_logs", JSON.stringify(logs.slice(0, 5)));
-    updateHistoryDisplay();
-}
-
-function updateHistoryDisplay() {
-    const logs = JSON.parse(localStorage.getItem("vocab_logs") || "[]");
-    if(logs.length === 0) return;
-    historyContent.innerHTML = logs.map(l => `<div>${l.date} : ${l.score}/${l.total}</div>`).join("");
+    osc.frequency.setValueAtTime(ok ? 880 : 200, audioCtx.currentTime);
+    gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+    osc.start(); osc.stop(audioCtx.currentTime + 0.15);
 }
 
 function speak(text, lang) {
@@ -2362,118 +2398,108 @@ function speak(text, lang) {
     });
 }
 
-async function playSequence() {
-    if(!current) return;
-    speechSynthesis.cancel();
-    clearTimeout(timer);
-    
+async function startWord() {
+    if (!current) return;
+    speechSynthesis.cancel(); clearTimeout(timer);
     accepting = true;
-    gaugeEl.style.transition = 'none';
-    gaugeEl.style.transform = 'scaleX(0)';
-    englishWordEl.textContent = current.en;
-    japaneseWordEl.textContent = "";
+    const g = document.getElementById("gauge");
+    g.style.transition = 'none'; g.style.transform = 'scaleX(0)';
+    document.getElementById("englishWord").textContent = current.en;
+    document.getElementById("japaneseWord").textContent = "";
     
-    const ms = Number(limitInput.value) || 2000;
-    gaugeEl.style.transition = `transform ${ms}ms linear`;
-    setTimeout(() => { if(accepting) gaugeEl.style.transform = 'scaleX(1)'; }, 10);
+    const limit = Number(limitInput.value);
+    setTimeout(() => { if (accepting) { g.style.transition = `transform ${limit}ms linear`; g.style.transform = 'scaleX(1)'; } }, 50);
+    timer = setTimeout(() => { if (accepting) submit("×"); }, limit);
     
-    timer = setTimeout(() => {
-        if(accepting && running) submit("×");
-    }, ms);
-
     await speak(current.en, "en-US");
-    if(!accepting) return;
-    await new Promise(r => setTimeout(r, 100));
-    if(!accepting) return;
-    japaneseWordEl.textContent = current.ja;
+    if (!accepting) return;
+    document.getElementById("japaneseWord").textContent = current.ja;
     await speak(current.ja, "ja-JP");
 }
 
 function submit(mark) {
-    if(!running || !accepting) return;
-    clearTimeout(timer);
-    accepting = false;
-    speechSynthesis.cancel();
-    
-    if(mark === '○') {
-        playSound('ok'); combo++;
-        if(combo > maxCombo) maxCombo = combo;
-        comboDisplay.textContent = `${combo} COMBO`;
-        comboDisplay.classList.add('active');
+    if (!running || !accepting) return;
+    clearTimeout(timer); accepting = false; speechSynthesis.cancel();
+    if (mark === "○") {
+        playBeep(true); combo++; maxCombo = Math.max(maxCombo, combo);
+        document.getElementById("comboDisplay").textContent = `${combo} COMBO`;
+        document.getElementById("comboDisplay").classList.add("active");
     } else {
-        playSound('ng'); combo = 0;
-        comboDisplay.classList.remove('active');
+        playBeep(false); combo = 0; document.getElementById("comboDisplay").classList.remove("active");
     }
     results.push({ ...current, mark });
-    setTimeout(next, 150);
+    setTimeout(next, 100);
 }
 
 function next() {
-    if(queue.length === 0) { showReport(); return; }
-    current = queue.pop(); updateUI(); playSequence();
-}
-
-function updateUI() {
+    if (queue.length === 0) { finish(); return; }
+    current = queue.pop();
     const total = results.length + queue.length + 1;
     document.getElementById("progressText").textContent = `${results.length + 1} / ${total}`;
-    progressBarEl.style.width = `${(results.length / total) * 100}%`;
+    document.getElementById("progressBar").style.width = `${(results.length / total) * 100}%`;
+    startWord();
 }
 
-function showReport() {
-    running = false;
-    if(silentPlayer) silentPlayer.pause();
-    endTime = new Date();
-    report.style.display = "block";
-    const missed = results.filter(v => v.mark === "×");
+function finish() {
+    running = false; document.getElementById("app").style.display = "none";
+    document.getElementById("report").style.display = "block";
+    const missed = results.filter(r => r.mark === "×");
     missedWords = missed;
-    const scoreText = `正解: ${results.length - missed.length} / ${results.length}`;
-    document.getElementById("scoreSummary").textContent = scoreText;
+    localStorage.setItem("teppeki_missed", JSON.stringify(missed));
+    document.getElementById("scoreSummary").textContent = `正解: ${results.length - missed.length} / ${results.length}`;
     document.getElementById("maxComboReport").textContent = `最大コンボ: ${maxCombo}`;
-    const timeFormat = (d) => d.toLocaleTimeString('ja-JP', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
-    let copyText = `修行記録\n開始: ${timeFormat(startTime)}\n終了: ${timeFormat(endTime)}\n間違い: ${missed.length}個\n\n【ミスの詳細】\n`;
-    copyText += missed.map(v => `${v.en},${v.ja}`).join("\n");
-    document.getElementById("copyArea").value = copyText;
-    retryMissedBtn.style.display = missed.length > 0 ? "block" : "none";
-    saveHistory(results.length - missed.length, results.length);
+    document.getElementById("copyArea").value = missed.map(m => `${m.en},${m.ja}`).join("\n");
+    document.getElementById("retryMissedBtn").style.display = missed.length > 0 ? "block" : "none";
+    saveLog(results.length - missed.length, results.length);
 }
 
-function startLearning(list) {
-    if(!list.length) return;
-    startSilentAudio(); // 修行開始時に無音再生を開始
-    startTime = new Date();
+function saveLog(score, total) {
+    let logs = JSON.parse(localStorage.getItem("teppeki_logs") || "[]");
+    logs.unshift({ date: new Date().toLocaleString(), score, total });
+    localStorage.setItem("teppeki_logs", JSON.stringify(logs.slice(0, 5)));
+    renderLog();
+}
+
+function renderLog() {
+    const logs = JSON.parse(localStorage.getItem("teppeki_logs") || "[]");
+    historyContent.innerHTML = logs.map(l => `<div>${l.date} : ${l.score}/${l.total}</div>`).join("");
+}
+
+function run(list) {
+    if (!list.length) return;
     queue = list.sort(() => Math.random() - 0.5);
     results = []; combo = 0; maxCombo = 0; running = true;
-    setup.style.display = "none"; report.style.display = "none";
+    document.getElementById("setup").style.display = "none";
+    document.getElementById("report").style.display = "none";
+    document.getElementById("app").style.display = "flex";
     next();
 }
 
 document.getElementById("startBtn").addEventListener("click", () => {
-    const lines = importArea.value.split("\n").filter(v => v.includes(","));
-    const fullList = lines.map(line => {
-        const p = line.split(","); return { en: p[0].trim(), ja: p[1].trim() };
-    });
+    const lines = importArea.value.trim().split("\n").filter(l => l.includes(","));
+    const list = lines.map(l => { const [en, ja] = l.split(","); return { en: en.trim(), ja: ja.trim() }; });
     const s = parseInt(document.getElementById("rangeStart").value) - 1;
     const e = parseInt(document.getElementById("rangeEnd").value);
-    const scopedList = fullList.slice(Math.max(0, s), e);
-    startLearning(scopedList);
+    run(list.slice(s, e));
 });
 
-document.addEventListener("keydown", (e) => {
-    if(!running || !accepting) return;
-    if(e.key.toLowerCase() === "z") submit("○");
-    if(e.key.toLowerCase() === "a") submit("×");
-});
-
-retryMissedBtn.addEventListener("click", () => startLearning([...missedWords]));
-document.getElementById("copyBtn").addEventListener("click", () => {
-    document.getElementById("copyArea").select();
-    document.execCommand("copy");
-});
-document.getElementById("backToSetupBtn").addEventListener("click", () => { report.style.display = "none"; setup.style.display = "block"; });
+document.getElementById("retryMissedBtn").addEventListener("click", () => run([...missedWords]));
 document.getElementById("correctBtn").addEventListener("click", () => submit("○"));
 document.getElementById("wrongBtn").addEventListener("click", () => submit("×"));
-document.getElementById("againBtn").addEventListener("click", () => { if(running) playSequence(); });
-document.addEventListener("touchstart", (e) => { if(e.touches.length === 2) location.reload(); }, { passive: true });
+document.getElementById("againBtn").addEventListener("click", () => { if (running) startWord(); });
+document.getElementById("backToSetupBtn").addEventListener("click", () => { document.getElementById("report").style.display = "none"; document.getElementById("setup").style.display = "block"; });
+document.getElementById("copyBtn").addEventListener("click", () => { document.getElementById("copyArea").select(); document.execCommand("copy"); });
+
+document.addEventListener("keydown", (e) => {
+    if (!running || !accepting) return;
+    if (e.key.toLowerCase() === "z") submit("○");
+    if (e.key.toLowerCase() === "a") submit("×");
+});
+
+window.onload = () => {
+    importArea.value = masterVocabData;
+    loadState(); countWords(); renderLog();
+};
 </script>
 </body>
 </html>
